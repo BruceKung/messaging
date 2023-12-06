@@ -1,0 +1,20 @@
+[package]
+name = "ft_aeron_example"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+publisher = { path = "../publisher" }
+subscriber = { path = "../subscriber" }
+
+
+[[bin]]
+name = "ft_aeron_example_publisher"
+path = "src/publish.rs"
+
+[[bin]]
+name = "ft_aeron_example_subscriber"
+path = "src/subscribe.rs"
+

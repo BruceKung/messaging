@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "aeron-rs",
+    "publisher",
+    "subscriber",
+    "example"
+]
