@@ -123,7 +123,7 @@ impl Subscriber {
         Ok(())
     }
 
-    pub fn unsubscribe(&mut self) -> anyhow::Result<()> {
+    pub fn release(&mut self) -> anyhow::Result<()> {
         println!("Unsubscribing from Aeron");
         self.running.store(false, Ordering::SeqCst);
         if self.poll_thread.is_some() {

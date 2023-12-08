@@ -74,6 +74,22 @@ impl Messaging
         Ok(())
     }
 
+
+    pub fn release(&mut self) -> anyhow::Result<()> {
+        if self.settings.is_none() || self.aeron.is_none() {
+            bail!("Please call connect first!")
+        }
+
+        //for (id,  p) in self.publishers.iter_mut() {
+        //    p.release();
+        //}
+        //for (id, s) in self.subscribers.iter() {
+        //    s.release();
+        //}
+        
+        Ok(())
+    }
+
     pub fn init_publish( &self, stream_id: i32 ) ->  anyhow::Result<()> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!");
@@ -100,6 +116,23 @@ impl Messaging
         Ok(())
     }
 
+    pub fn unpublish(&self, stream_id: i32) -> anyhow::Result<()> {
+        if self.settings.is_none() || self.aeron.is_none() {
+            bail!("Please call connect first!")
+        }
+
+        match self.publishers.entry(stream_id) {
+            Entry::Occupied(mut o) => {
+                o.get_mut().release();
+                o.remove_entry();
+            }
+            Entry::Vacant(_) => {
+                bail!("Publisher not found for channel {}, please call init_publish in advance!", stream_id)
+            }
+        }
+        Ok(())
+    }
+
     pub fn subscribe(&mut self, stream_id: i32, sender : Sender<Vec<u8>>) -> anyhow::Result<()>{
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
@@ -118,7 +151,7 @@ impl Messaging
 
         match self.subscribers.entry(stream_id) {
             Entry::Occupied(mut o) => {
-                o.get_mut().unsubscribe();
+                o.get_mut().release();
                 o.remove_entry();
             }
             Entry::Vacant(_) => {

@@ -62,6 +62,11 @@ impl Publisher {
 
     }
 
+    pub fn release(&self) {
+        println!("Stopping publisher");
+        self.publication.lock().unwrap().release();
+    }
+
 }
 
 
