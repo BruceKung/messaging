@@ -1,4 +1,5 @@
 use dashmap::DashMap;
+use dashmap::mapref::entry::Entry;
 use anyhow::{bail, Result };
 use std::{ffi::CString, sync::{Arc, Mutex}, slice};
 use crossbeam::channel::{Sender, Receiver};
@@ -88,12 +89,14 @@ impl Messaging
             bail!("Please call connect first!")
         }
 
-        let p = self.publishers.get(&stream_id);
-        if p.is_none() {
-            bail!("Publisher not found for channel {}, please call init_publish in advance!", stream_id)
+        match self.publishers.entry(stream_id) {
+            Entry::Occupied(mut o) => {
+                o.get_mut().publish(data, len);
+            }
+            Entry::Vacant(_) => {
+                bail!("Publisher not found for channel {}, please call init_publish in advance!", stream_id)
+            }
         }
-        let p = p.unwrap();
-        p.publish(data, len);
         Ok(())
     }
 
@@ -105,10 +108,25 @@ impl Messaging
         let mut s = Subscriber::new(self.aeron.as_ref().unwrap().clone(), self.settings.as_ref().unwrap().channel.as_str(), stream_id, sender);
         s.subscribe();
         self.subscribers.insert(stream_id, s);
-        //SUBSCRIBER_SENDERS.insert(stream_id, sender);
         Ok(())
     }
 
+    pub fn unsubscribe(&mut self, stream_id: i32) -> anyhow::Result<()>{
+        if self.settings.is_none() || self.aeron.is_none() {
+            bail!("Please call connect first!")
+        }
+
+        match self.subscribers.entry(stream_id) {
+            Entry::Occupied(mut o) => {
+                o.get_mut().unsubscribe();
+                o.remove_entry();
+            }
+            Entry::Vacant(_) => {
+                bail!("Subscriber not found for stream {}, please call subscribe in advance!", stream_id)
+            }
+        }
+        Ok(())
+    }
    
     pub fn request() {
 

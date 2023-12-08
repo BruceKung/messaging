@@ -129,7 +129,7 @@ impl Subscriber {
         if self.poll_thread.is_some() {
             match self.poll_thread.take().unwrap().join() {
                 Ok(_) => println!("Poll thread stopped"),
-                Err(e) => println!("Error stopping poll thread: {:?}", e),
+                Err(e) => bail!("Error stopping poll thread: {:?}", e),
             }
         }
         Ok(())
