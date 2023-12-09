@@ -1,6 +1,9 @@
 use std::ffi::CString;
-use subscriber::{Settings, AeronSubscriber};
-
+use messaging::core::messaging::Messaging;
+use messaging::base::settings::Settings;
+use messaging::publisher::publisher::Publisher;
+use messaging::subscriber::subscriber::Subscriber;
+use crossbeam::channel::{Sender, Receiver};
 
 pub fn main() {
 
@@ -12,10 +15,30 @@ pub fn main() {
         linger_timeout_ms: 1000,
     };
 
-    let subscriber = AeronSubscriber::new(&setting);
-
-    loop {
-        subscriber.subscribe();
-        std::thread::sleep(std::time::Duration::from_millis(1000));
+    let mut messaging = Messaging::new();
+    match messaging.connect(&setting) {
+        Ok(_) => {}
+        Err(e) => {
+            println!("Error: {:?}", e);
+            return;
+        }
     }
+
+    let stream_id = 1001;
+
+    let (sender, receiver ) = crossbeam::channel::unbounded::<Vec<u8>>();
+
+    match messaging.subscribe(stream_id, sender) {
+        Ok(_) => {}
+        Err(e) => {
+            println!("Error: {:?}", e);
+            return;
+        }
+    }
+
+    while let Ok(msg) = receiver.recv() {
+        let msg = CString::new(msg).unwrap();
+        println!("Received message: {:?}", msg);
+    }
+
 }

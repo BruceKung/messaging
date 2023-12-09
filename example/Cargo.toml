@@ -7,13 +7,20 @@ edition = "2021"
 
 [dependencies]
 messaging = { path = "../messaging" }
-
+crossbeam = "0.8.1"
 
 [[bin]]
-name = "ft_aeron_example_publisher"
+name = "example_publisher"
 path = "src/publish.rs"
 
 [[bin]]
-name = "ft_aeron_example_subscriber"
+name = "example_subscriber"
 path = "src/subscribe.rs"
 
+#[[bin]]
+#name = "example_requester"
+#path = "src/request.rs"
+#
+#[[bin]]
+#name = "example_responser"
+#path = "src/response.rs"

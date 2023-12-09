@@ -1,6 +1,10 @@
 use std::ffi::CString;
 
-use publisher::{Settings, AeronPublisher};
+use messaging::core::messaging::Messaging;
+use messaging::base::settings::Settings;
+use messaging::publisher::publisher::Publisher;
+use messaging::subscriber::subscriber::Subscriber;
+
 
 pub fn main() {
 
@@ -12,13 +16,36 @@ pub fn main() {
         linger_timeout_ms: 1000,
     };
 
-    let publisher = AeronPublisher::new(&setting);
+    let mut messaging = Messaging::new();
+    match messaging.connect(&setting) {
+        Ok(_) => {}
+        Err(e) => {
+            println!("Error: {:?}", e);
+            return;
+        }
+    }
+
+    let stream_id = 1001;
+
+    match messaging.init_publish(stream_id) {
+        Ok(_) => {}
+        Err(e) => {
+            println!("Error: {:?}", e);
+            return;
+        }
+    }
 
     let mut index : i32 = 0;
     loop {
         let str_msg = format!("Basic publisher msg {}", index);
         let c_str_msg = CString::new(str_msg).unwrap();
-        publisher.publish(c_str_msg.as_bytes(),  c_str_msg.as_bytes().len() as i32 );
+
+        match messaging.publish(stream_id, c_str_msg.as_bytes(),  c_str_msg.as_bytes().len() as i32) {
+            Ok(_) => {}
+            Err(e) => {
+                println!("Error: {:?}", e);
+            }
+        }
         std::thread::sleep(std::time::Duration::from_millis(1000));
         index += 1;
     }

@@ -66,6 +66,7 @@ impl Messaging
             std::thread::sleep(std::time::Duration::from_millis(100));
             count += 1;
             if count > 100 {
+
                 bail!("Aeron instance is closed");
             }
         }

@@ -358,6 +358,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft_aeron_example"
+version = "0.1.0"
+dependencies = [
+ "crossbeam",
+ "messaging",
+]
+
+[[package]]
 name = "fuchsia-cprng"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -517,7 +525,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "messaing"
+name = "messaging"
 version = "0.1.0"
 dependencies = [
  "aeron-rs",
