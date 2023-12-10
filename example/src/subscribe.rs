@@ -24,11 +24,11 @@ pub fn main() {
         }
     }
 
-    let stream_id = 1001;
+    let topic = "test_topic".to_string();
 
     let (sender, receiver ) = crossbeam::channel::unbounded::<Vec<u8>>();
 
-    match messaging.subscribe(stream_id, sender) {
+    match messaging.subscribe(topic.as_str(), sender) {
         Ok(_) => {}
         Err(e) => {
             println!("Error: {:?}", e);

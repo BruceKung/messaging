@@ -25,9 +25,9 @@ pub fn main() {
         }
     }
 
-    let stream_id = 1001;
+    let topic = "test_topic".to_string();
 
-    let result = messaging.new_publisher(stream_id);
+    let result = messaging.new_publisher(topic.as_str());
     if result.is_err() {
         println!("Error: {:?}", result.err());
         return;

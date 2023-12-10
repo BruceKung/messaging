@@ -93,10 +93,12 @@ impl Messaging {
         Ok(())
     }
 
-    pub fn new_publisher(&self, stream_id: i32) -> anyhow::Result<Arc<Publisher>> {
+    pub fn new_publisher(&self, topic: &str) -> anyhow::Result<Arc<Publisher>> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!");
         }
+
+        let stream_id = Self::hash_stream_id(topic);
 
         let p = Arc::new(Publisher::new(
             self.aeron.as_ref().unwrap().clone(),
@@ -107,10 +109,11 @@ impl Messaging {
         Ok(p.clone())
     }
 
-    pub fn publish(&self, stream_id: i32, data: &[u8], len: i32) -> anyhow::Result<()> {
+    pub fn publish(&self, topic: &str, data: &[u8], len: i32) -> anyhow::Result<()> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
+        let stream_id = Self::hash_stream_id(topic);
 
         match self.publishers.entry(stream_id) {
             Entry::Occupied(mut o) => {
@@ -126,11 +129,12 @@ impl Messaging {
         Ok(())
     }
 
-    pub fn unpublish(&self, stream_id: i32) -> anyhow::Result<()> {
+    pub fn unpublish(&self, topic: &str) -> anyhow::Result<()> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
 
+        let stream_id = Self::hash_stream_id(topic);
         match self.publishers.entry(stream_id) {
             Entry::Occupied(mut o) => {
                 o.get_mut().release();
@@ -146,10 +150,12 @@ impl Messaging {
         Ok(())
     }
 
-    pub fn subscribe(&mut self, stream_id: i32, sender: Sender<Vec<u8>>) -> anyhow::Result<()> {
+    pub fn subscribe(&mut self, topic : &str, sender: Sender<Vec<u8>>) -> anyhow::Result<()> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
+
+        let stream_id = Self::hash_stream_id(topic);
 
         let mut s = Subscriber::new(
             self.aeron.as_ref().unwrap().clone(),
@@ -162,10 +168,11 @@ impl Messaging {
         Ok(())
     }
 
-    pub fn unsubscribe(&mut self, stream_id: i32) -> anyhow::Result<()> {
+    pub fn unsubscribe(&mut self, topic : &str) -> anyhow::Result<()> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
+        let stream_id = Self::hash_stream_id(topic);
 
         match self.subscribers.entry(stream_id) {
             Entry::Occupied(mut o) => {
