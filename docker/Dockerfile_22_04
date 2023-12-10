@@ -1,0 +1,17 @@
+FROM ubuntu-base:22.04 as builder
+
+WORKDIR /root
+
+RUN apt-get update && \
+     apt-get install -y cmake \
+     capnproto libssl-dev git clang libtbb-dev
+
+COPY . .
+
+
+
+ FROM ubuntu-base:22.04
+ RUN apt-get update && \
+     apt-get install -y libtbb-dev
+
+ WORKDIR /root
