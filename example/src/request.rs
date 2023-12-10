@@ -24,27 +24,28 @@ pub fn main() {
         }
     }
 
-    let stream_id = 1001;
+    let (sender, receiver ) = crossbeam::channel::unbounded::<Vec<u8>>();    
 
-    let result = messaging.new_publisher(stream_id);
+    let topic = "test_topic".to_string();
+    let result  = messaging.request( topic.as_str(), sender);
     if result.is_err() {
         println!("Error: {:?}", result.err());
         return;
     }
-
-    let publiser = result.unwrap();
+    let requester = result.unwrap();
 
     let mut index : i32 = 0;
     loop {
-        let str_msg = format!("Basic publisher msg {}", index);
+        let str_msg = format!("Basic Request msg {}", index);
         let c_str_msg = CString::new(str_msg).unwrap();
 
-        match publiser.clone().publish( c_str_msg.as_bytes(),  c_str_msg.as_bytes().len() as i32) {
-            Ok(_) => {}
-            Err(e) => {
-                println!("Error: {:?}", e);
-            }
+        requester.clone().send( c_str_msg.as_bytes(),  c_str_msg.as_bytes().len() as i32) ;
+
+        if let Ok(msg) = receiver.recv() {
+            let msg = CString::new(msg).unwrap();
+            println!("Received message: {:?}", msg);
         }
+
         std::thread::sleep(std::time::Duration::from_millis(1000));
         index += 1;
     }

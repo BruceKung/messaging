@@ -1,49 +1,60 @@
-use dashmap::DashMap;
-use dashmap::mapref::entry::Entry;
-use anyhow::{bail, Result };
-use std::{ffi::CString, sync::{Arc, Mutex}, slice};
-use crossbeam::channel::{Sender, Receiver};
+use crate::publisher::publisher::Publisher;
+use crate::subscriber::subscriber::Subscriber;
+use crate::{
+    base::settings::Settings, requester::requester::Requester, responser::responser::Responser,
+};
 use aeron_rs::{
     aeron::Aeron,
     concurrent::{
         atomic_buffer::{AlignedBuffer, AtomicBuffer},
-        status::status_indicator_reader::channel_status_to_str,logbuffer::header::Header,
+        logbuffer::header::Header,
+        status::status_indicator_reader::channel_status_to_str,
     },
-    context::Context, publication,subscription, image::Image,
+    context::Context,
+    image::Image,
+    publication, subscription,
     utils::{errors::AeronError, types::Index},
 };
-use crate::base::settings::Settings;
-use crate::publisher::publisher::Publisher;
-use crate::subscriber::subscriber::Subscriber;
+use anyhow::{bail, Result};
+use crossbeam::channel::{Receiver, Sender};
+use dashmap::mapref::entry::Entry;
+use dashmap::DashMap;
 use lazy_static::lazy_static;
 use once_cell::sync::Lazy;
+use std::{
+    ffi::CString,
+    hash::{self, Hash, Hasher},
+    slice,
+    sync::{Arc, Mutex},
+    collections::hash_map::DefaultHasher,
+};
 
 //lazy_static!{
 //    pub static ref SUBSCRIBER_SENDERS: DashMap<i32, Sender<Vec<u8>>> = DashMap::new();
 //}
 
-
-pub struct  Messaging
-{
-    pub settings : Option<Settings>,
-    pub aeron : Option<Arc<Mutex<Aeron>>>,
-    pub publishers : DashMap<i32, Arc<Publisher>>,
-    pub subscribers : DashMap<i32, Subscriber>,
+pub struct Messaging {
+    pub settings: Option<Settings>,
+    pub aeron: Option<Arc<Mutex<Aeron>>>,
+    pub publishers: DashMap<i32, Arc<Publisher>>,
+    pub subscribers: DashMap<i32, Subscriber>,
+    pub requesters: DashMap<String, Arc<Requester>>,
+    pub responsers: DashMap<String, Arc<Responser>>,
 }
 
-impl Messaging
-{
-    pub fn new( ) -> Self {
+impl Messaging {
+    pub fn new() -> Self {
         Self {
-            settings : None,
-            aeron : None,
-            publishers : DashMap::new(),
-            subscribers : DashMap::new(),
+            settings: None,
+            aeron: None,
+            publishers: DashMap::new(),
+            subscribers: DashMap::new(),
+            requesters: DashMap::new(),
+            responsers: DashMap::new(),
         }
     }
 
-    pub fn connect(&mut self, settings : &Settings) -> anyhow::Result<()> {
-
+    pub fn connect(&mut self, settings: &Settings) -> anyhow::Result<()> {
         let mut ctx = Context::new();
         if !settings.dir_prefix.is_empty() {
             ctx.set_aeron_dir(settings.dir_prefix.clone());
@@ -61,12 +72,11 @@ impl Messaging
         }
 
         self.settings = Some(settings.clone());
-        self.aeron = Some(Arc::new(Mutex::new( aeron.unwrap() )));
+        self.aeron = Some(Arc::new(Mutex::new(aeron.unwrap())));
 
         print!("Aeron instance is closed");
         Ok(())
     }
-
 
     pub fn release(&mut self) -> anyhow::Result<()> {
         if self.settings.is_none() || self.aeron.is_none() {
@@ -79,16 +89,20 @@ impl Messaging
         //for (id, s) in self.subscribers.iter() {
         //    s.release();
         //}
-        
+
         Ok(())
     }
 
-    pub fn new_publisher( &self, stream_id: i32 ) ->  anyhow::Result<Arc<Publisher>> {
+    pub fn new_publisher(&self, stream_id: i32) -> anyhow::Result<Arc<Publisher>> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!");
         }
 
-        let p = Arc::new(Publisher::new(self.aeron.as_ref().unwrap().clone(), self.settings.as_ref().unwrap().channel.as_str(), stream_id));
+        let p = Arc::new(Publisher::new(
+            self.aeron.as_ref().unwrap().clone(),
+            self.settings.as_ref().unwrap().channel.as_str(),
+            stream_id,
+        ));
         self.publishers.insert(stream_id, p.clone());
         Ok(p.clone())
     }
@@ -103,7 +117,10 @@ impl Messaging
                 o.get_mut().publish(data, len);
             }
             Entry::Vacant(_) => {
-                bail!("Publisher not found for channel {}, please call init_publish in advance!", stream_id)
+                bail!(
+                    "Publisher not found for channel {}, please call init_publish in advance!",
+                    stream_id
+                )
             }
         }
         Ok(())
@@ -120,24 +137,32 @@ impl Messaging
                 o.remove_entry();
             }
             Entry::Vacant(_) => {
-                bail!("Publisher not found for channel {}, please call init_publish in advance!", stream_id)
+                bail!(
+                    "Publisher not found for channel {}, please call init_publish in advance!",
+                    stream_id
+                )
             }
         }
         Ok(())
     }
 
-    pub fn subscribe(&mut self, stream_id: i32, sender : Sender<Vec<u8>>) -> anyhow::Result<()>{
+    pub fn subscribe(&mut self, stream_id: i32, sender: Sender<Vec<u8>>) -> anyhow::Result<()> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
 
-        let mut s = Subscriber::new(self.aeron.as_ref().unwrap().clone(), self.settings.as_ref().unwrap().channel.as_str(), stream_id, sender);
+        let mut s = Subscriber::new(
+            self.aeron.as_ref().unwrap().clone(),
+            self.settings.as_ref().unwrap().channel.as_str(),
+            stream_id,
+            sender,
+        );
         s.subscribe();
         self.subscribers.insert(stream_id, s);
         Ok(())
     }
 
-    pub fn unsubscribe(&mut self, stream_id: i32) -> anyhow::Result<()>{
+    pub fn unsubscribe(&mut self, stream_id: i32) -> anyhow::Result<()> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
@@ -148,19 +173,69 @@ impl Messaging
                 o.remove_entry();
             }
             Entry::Vacant(_) => {
-                bail!("Subscriber not found for stream {}, please call subscribe in advance!", stream_id)
+                bail!(
+                    "Subscriber not found for stream {}, please call subscribe in advance!",
+                    stream_id
+                )
             }
         }
         Ok(())
     }
-   
-    pub fn request() {
 
+    pub fn request(&mut self, topic: &str, sender: Sender<Vec<u8>>) -> anyhow::Result<Arc<Requester>> {
+        if self.settings.is_none() || self.aeron.is_none() {
+            bail!("Please call connect first!")
+        }
+
+        let pub_stream_id = Self::hash_stream_id(format!("{}_{}", topic, "requester").as_str());
+        let sub_stream_id = Self::hash_stream_id(format!("{}_{}", topic, "responser").as_str());
+
+        let mut s = Arc::new(Requester::new(
+            self.aeron.as_ref().unwrap().clone(),
+            self.settings.as_ref().unwrap().channel.as_str(),
+            pub_stream_id,
+            sub_stream_id,
+            sender,
+        ));
+
+        self.requesters.insert(topic.to_owned(), s.clone());
+
+        Ok(s.clone())
     }
 
+    pub fn response(&mut self, topic: &str, sender: Sender<Vec<u8>>) -> anyhow::Result<Arc<Responser>> {
+        if self.settings.is_none() || self.aeron.is_none() {
+            bail!("Please call connect first!")
+        }
 
+        let pub_stream_id = Self::hash_stream_id(format!("{}_{}", topic, "requester").as_str());
+        let sub_stream_id = Self::hash_stream_id(format!("{}_{}", topic, "responser").as_str());
 
-    pub fn on_new_publication_handler(channel: CString, stream_id: i32, session_id: i32, correlation_id: i64) {
+        let mut s = Arc::new(Responser::new(
+            self.aeron.as_ref().unwrap().clone(),
+            self.settings.as_ref().unwrap().channel.as_str(),
+            sub_stream_id,
+            pub_stream_id,
+            sender,
+        ));
+
+        self.responsers.insert(topic.to_owned(), s.clone());
+
+        Ok(s.clone())
+    }
+
+    fn hash_stream_id(topic: &str) -> i32 {
+        let mut state = DefaultHasher::new();
+        topic.hash(&mut state) ;
+        state.finish() as i32
+    }
+
+    pub fn on_new_publication_handler(
+        channel: CString,
+        stream_id: i32,
+        session_id: i32,
+        correlation_id: i64,
+    ) {
         println!(
             "Publication: {} {} {} {}",
             channel.to_str().unwrap(),
@@ -203,4 +278,3 @@ impl Messaging
         println!("Error: {:?}", error);
     }
 }
-

@@ -17,10 +17,10 @@ path = "src/publish.rs"
 name = "example_subscriber"
 path = "src/subscribe.rs"
 
-#[[bin]]
-#name = "example_requester"
-#path = "src/request.rs"
-#
-#[[bin]]
-#name = "example_responser"
-#path = "src/response.rs"
+[[bin]]
+name = "example_requester"
+path = "src/request.rs"
+
+[[bin]]
+name = "example_responser"
+path = "src/response.rs"

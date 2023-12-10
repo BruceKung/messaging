@@ -28,8 +28,8 @@ use anyhow::{bail, Result};
 use crossbeam::channel::Sender;
 
 pub struct Requester {
-    pub publisher : Publisher,
-    pub subscriber: Subscriber,
+    pub publisher : Arc<Publisher>,
+    pub subscriber: Arc<Subscriber>,
 }
 
 impl Requester {
@@ -41,8 +41,9 @@ impl Requester {
         sender: Sender<Vec<u8>>,
     ) -> Self {
 
-        let publisher = Publisher::new(aeron.clone(), channel, request_stream_id);
-        let subscriber = Subscriber::new(aeron.clone(), channel, response_stream_id, sender);
+        println!("Adding requester to Aeron with channel {} and stream id {},{}", channel, request_stream_id,response_stream_id);
+        let publisher = Arc::new(Publisher::new(aeron.clone(), channel, request_stream_id));
+        let subscriber = Arc::new(Subscriber::new(aeron.clone(), channel, response_stream_id, sender));
 
         Self {
             publisher,
@@ -50,14 +51,10 @@ impl Requester {
         }
     }
 
-    pub fn release(&mut self) {
-        self.publisher.release();
-        self.subscriber.release();
-    }
     
-    pub fn request(&self, data: &[u8], len: i32) {
+    pub fn send(&self, data: &[u8], len: i32) {
         println!("Publishing to Aeron");
-        self.publisher.publish(data, len);
+        self.publisher.clone().publish(data, len);
     }
 
 }
