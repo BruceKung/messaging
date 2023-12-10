@@ -27,7 +27,7 @@ pub struct  Messaging
 {
     pub settings : Option<Settings>,
     pub aeron : Option<Arc<Mutex<Aeron>>>,
-    pub publishers : DashMap<i32, Publisher>,
+    pub publishers : DashMap<i32, Arc<Publisher>>,
     pub subscribers : DashMap<i32, Subscriber>,
 }
 
@@ -60,18 +60,10 @@ impl Messaging
             bail!("Could not connect to Aeron media driver");
         }
 
-        let aeron = aeron.unwrap();
-        let mut count = 0;
-        while !aeron.is_closed() {
-            std::thread::sleep(std::time::Duration::from_millis(100));
-            count += 1;
-            if count > 100 {
-
-                bail!("Aeron instance is closed");
-            }
-        }
         self.settings = Some(settings.clone());
-        self.aeron = Some(Arc::new(Mutex::new( aeron )));
+        self.aeron = Some(Arc::new(Mutex::new( aeron.unwrap() )));
+
+        print!("Aeron instance is closed");
         Ok(())
     }
 
@@ -91,14 +83,14 @@ impl Messaging
         Ok(())
     }
 
-    pub fn init_publish( &self, stream_id: i32 ) ->  anyhow::Result<()> {
+    pub fn new_publisher( &self, stream_id: i32 ) ->  anyhow::Result<Arc<Publisher>> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!");
         }
 
-        let p = Publisher::new(self.aeron.as_ref().unwrap().clone(), self.settings.as_ref().unwrap().channel.as_str(), stream_id);
-        self.publishers.insert(stream_id, p);
-        Ok(())
+        let p = Arc::new(Publisher::new(self.aeron.as_ref().unwrap().clone(), self.settings.as_ref().unwrap().channel.as_str(), stream_id));
+        self.publishers.insert(stream_id, p.clone());
+        Ok(p.clone())
     }
 
     pub fn publish(&self, stream_id: i32, data: &[u8], len: i32) -> anyhow::Result<()> {

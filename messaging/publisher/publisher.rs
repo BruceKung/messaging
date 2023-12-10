@@ -9,6 +9,8 @@ use aeron_rs::{
     context::Context, publication, utils::errors::AeronError,
 };
 
+use anyhow::{bail, Result };
+
 use crate::base::utils::str_to_c;
 
 pub struct Publisher {
@@ -42,7 +44,7 @@ impl Publisher {
         }
     }
 
-    pub fn publish(&self, data: &[u8], len: i32) {
+    pub fn publish(&self, data: &[u8], len: i32) -> anyhow::Result<()> {
         println!("Publishing to Aeron");
 
         let buffer = AlignedBuffer::with_capacity(len);
@@ -53,12 +55,17 @@ impl Publisher {
 
         match result {
             Ok(_) => println!("Message sent"),
-            Err(e) => println!("Error sending message: {:?}", e),
+            Err(e) =>  {
+                println!("Error sending message: {:?}", e);
+                bail!("Error sending message: {:?}", e)
+            }
         }
 
         if !self.publication.lock().unwrap().is_connected() {
             println!("No active subscribers detected");
+            bail!("No active subscribers detected")
         }
+        Ok(())
 
     }
 

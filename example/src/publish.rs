@@ -27,20 +27,20 @@ pub fn main() {
 
     let stream_id = 1001;
 
-    match messaging.init_publish(stream_id) {
-        Ok(_) => {}
-        Err(e) => {
-            println!("Error: {:?}", e);
-            return;
-        }
+    let result = messaging.new_publisher(stream_id);
+    if result.is_err() {
+        println!("Error: {:?}", result.err());
+        return;
     }
+
+    let publiser = result.unwrap();
 
     let mut index : i32 = 0;
     loop {
         let str_msg = format!("Basic publisher msg {}", index);
         let c_str_msg = CString::new(str_msg).unwrap();
 
-        match messaging.publish(stream_id, c_str_msg.as_bytes(),  c_str_msg.as_bytes().len() as i32) {
+        match publiser.clone().publish( c_str_msg.as_bytes(),  c_str_msg.as_bytes().len() as i32) {
             Ok(_) => {}
             Err(e) => {
                 println!("Error: {:?}", e);
