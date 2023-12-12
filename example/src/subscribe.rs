@@ -5,6 +5,10 @@ use messaging::publisher::publisher::Publisher;
 use messaging::subscriber::subscriber::Subscriber;
 use crossbeam::channel::{Sender, Receiver};
 
+use protobuf::Message;
+
+#[path = "person.rs"] mod person;
+
 pub fn main() {
 
     let setting = Settings{
@@ -36,9 +40,9 @@ pub fn main() {
         }
     }
 
-    while let Ok(msg) = receiver.recv() {
-        let msg = CString::new(msg).unwrap();
-        println!("Received message: {:?}", msg);
+    while let Ok(msg) = receiver.recv() {        
+        let p = person::Person::parse_from_bytes(msg.as_slice()).unwrap();
+        println!("Received message: {:?}", p);
     }
 
 }

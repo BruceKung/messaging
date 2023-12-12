@@ -1,4 +1,4 @@
-use std::{ffi::CString, sync::{Arc, Mutex}};
+use std::{ffi::CString, sync::{Arc, Mutex}, f32::consts::E};
 
 use aeron_rs::{
     aeron::Aeron,
@@ -44,6 +44,10 @@ impl Publisher {
         }
     }
 
+    pub fn is_connected(&self) -> bool {
+        self.publication.lock().unwrap().is_connected()
+    }
+
     pub fn publish(&self, data: &[u8], len: i32) -> anyhow::Result<()> {
         println!("Publishing to Aeron");
 
@@ -51,13 +55,13 @@ impl Publisher {
         let src_buffer = AtomicBuffer::from_aligned(&buffer);
 
         src_buffer.put_bytes(0, data);
-        let result = self.publication.lock().unwrap().offer_part(src_buffer, 0, len);
 
-        match result {
-            Ok(_) => println!("Message sent"),
-            Err(e) =>  {
-                println!("Error sending message: {:?}", e);
-                bail!("Error sending message: {:?}", e)
+        loop {
+            if let Ok(result) = self.publication.lock().unwrap().offer_part(src_buffer, 0, len) {
+                break;
+            } else {
+                eprintln!("Offer failed, retrying");
+                std::thread::sleep(std::time::Duration::from_millis(100));
             }
         }
 

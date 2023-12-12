@@ -8,6 +8,10 @@ edition = "2021"
 [dependencies]
 messaging = { path = "../messaging" }
 crossbeam = "0.8.1"
+protobuf = "2"
+
+[build-dependencies]
+protoc-rust = "2.20.0"
 
 [[bin]]
 name = "example_publisher"
