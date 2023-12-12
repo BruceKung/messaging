@@ -76,4 +76,9 @@ impl Publisher {
 
 }
 
+impl Drop for Publisher {
+    fn drop(&mut self) {
+        self.release();
+    }
+}
 

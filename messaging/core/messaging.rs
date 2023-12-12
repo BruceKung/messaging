@@ -78,21 +78,6 @@ impl Messaging {
         Ok(())
     }
 
-    pub fn release(&mut self) -> anyhow::Result<()> {
-        if self.settings.is_none() || self.aeron.is_none() {
-            bail!("Please call connect first!")
-        }
-
-        //for (id,  p) in self.publishers.iter_mut() {
-        //    p.release();
-        //}
-        //for (id, s) in self.subscribers.iter() {
-        //    s.release();
-        //}
-
-        Ok(())
-    }
-
     pub fn new_publisher(&self, topic: &str) -> anyhow::Result<Arc<Publisher>> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!");
@@ -283,5 +268,18 @@ impl Messaging {
 
     fn error_handler(error: AeronError) {
         println!("Error: {:?}", error);
+    }
+}
+
+impl Drop for Messaging {
+    fn drop(&mut self) {
+        if self.settings.is_none() || self.aeron.is_none() {
+            eprintln!("Please call connect first!")
+        }
+
+        self.publishers.clear();
+        self.subscribers.clear();
+        self.requesters.clear();
+        self.responsers.clear();
     }
 }

@@ -137,3 +137,8 @@ impl Subscriber {
  
 }
 
+impl Drop for Subscriber {
+    fn drop(&mut self) {
+        self.release();
+    }
+}
