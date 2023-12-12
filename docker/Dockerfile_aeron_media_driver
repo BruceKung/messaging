@@ -1,0 +1,20 @@
+FROM ubuntu-base:22.04 as builder
+WORKDIR /root
+RUN apt-get update && \
+     apt-get install -y cmake build-essential openjdk-8-jdk 
+
+COPY ./docker/assets/aeron-1.42.1.tar.gz /root
+RUN tar -xzf aeron-1.42.1.tar.gz && \
+    pushd aeron-1.42.1 && \
+    mkdir build && \
+    pushd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/root/aeron/ -DBUILD_AERON_ARCHIVE_API=OFF .. && \
+    make -j6  && \
+    make install &&\
+    popd && \
+    popd && \
+    rm -rf aeron-1.42.1.tar.gz aeron-1.42.1
+    
+FROM ubuntu-base:22.04
+COPY --from=builder /root/aeron /root/aeron
+WORKDIR /root

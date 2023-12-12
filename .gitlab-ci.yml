@@ -14,5 +14,5 @@ aeron_media_driver_build_on_xz08:
     - echo 'complie start'
     - export DOCKER_BUILDKIT=1
     - export BUILDKIT_PROGRESS=plain
-    - docker build --ssh default="$HOME"/.ssh/id_rsa --network host -t ${component}:${customer}_${date} -f docker/Dockerfile_22_04 .
+    - docker build --network host -t ${component} -f docker/Dockerfile_aeron_media_driver .
     - echo 'complie done'
