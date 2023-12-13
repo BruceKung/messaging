@@ -51,6 +51,9 @@ impl Requester {
         }
     }
 
+    pub fn is_connected(&self) -> bool {
+        self.publisher.is_connected() && self.subscriber.is_connected()
+    }
     
     pub fn send(&self, data: &[u8], len: i32) {
         println!("Publishing to Aeron");

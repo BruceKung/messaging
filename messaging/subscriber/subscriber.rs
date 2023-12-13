@@ -13,7 +13,7 @@ use aeron_rs::{
         atomic_buffer::{AlignedBuffer, AtomicBuffer},
         logbuffer::header::Header,
         status::status_indicator_reader::channel_status_to_str,
-        strategies::BusySpinIdleStrategy,
+        strategies::{Strategy,BusySpinIdleStrategy},
     },
     context::Context,
     fragment_assembler::{Fragment, FragmentAssembler},
@@ -98,7 +98,7 @@ impl Subscriber {
     
                 while running.load(Ordering::SeqCst) {
                     let fragments_read = subscription.lock().unwrap().poll(&mut fragment_handler, DEFAULT_FRAGMENT_COUNT_LIMIT);
-                    //poll_idle_strategy.idle_opt(fragments_read);
+                    poll_idle_strategy.idle_opt(fragments_read);
                 }
             }) {
                 Ok(thread) => {
@@ -117,6 +117,9 @@ impl Subscriber {
         }
     }
 
+    pub fn is_connected(&self) -> bool {
+        true
+    }
     pub fn subscribe(&mut self) -> anyhow::Result<()> {
         println!("Subscribing to Aeron");
 
