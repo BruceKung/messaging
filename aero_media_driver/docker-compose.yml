@@ -1,0 +1,9 @@
+version: '3.9'
+services:
+  aeron_media_driver:
+    image: aeron_media_driver
+    volumes:
+      - ${PWD}/data/:/root/data/
+    environment:
+      - LD_LIBRARY_PATH=/root/aeron/lib/:${LD_LIBRARY_PATH}
+    command: /root/aeron/bin/aeronmd -DAERON_DIR=/root/data/aeron
