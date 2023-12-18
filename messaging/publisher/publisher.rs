@@ -56,17 +56,22 @@ impl Publisher {
 
         src_buffer.put_bytes(0, data);
 
+        let mut count = 0;
         loop {
-
             match self.publication.lock().unwrap().offer_part(src_buffer, 0, len) {
                 Ok(_) => {
                     //println!("Published to Aeron");
                     break;
                 }
                 Err(e) => {
+                    std::thread::sleep(std::time::Duration::from_millis(1000));
                     println!("Publish Error: {:?}", e);
+                    if count > 100 {
+                        bail!("After 100 times retry, puublish still error: {:?}", e);
+                    }
                 }
             }
+            count += 1;
         }
 
         if !self.publication.lock().unwrap().is_connected() {
