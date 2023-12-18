@@ -1,0 +1,80 @@
+
+syntax = "proto3";
+
+
+message  OrderInfo {
+  // 子单编号
+  int64 id = 1;
+  // 交易日期
+  int32 trade_date = 2;
+  // 母单id
+  int64 strategy_order_id = 3;
+  // 篮子id
+  int64 basket_id = 4;
+  // 账户ID(账户名)
+  string account_id = 5;
+  // 券商ID
+  int32 broker_id = 6;
+  // 交易账户名
+  string trade_acc = 7;
+  // 股票代码
+  string stock_code = 8;
+
+  // 策略类型
+  int32 strategy_type = 9;
+  //  tag
+  string tag = 10;
+  // 状态
+  int32 status = 11;
+  // 状态信息
+  string status_msg = 12;
+  // 下单时间
+  int64 order_time = 13;
+  // 下单价格
+  double order_price = 14;
+  // 下单量
+  int32 order_vol = 15;
+  // 买卖方向
+  int32 bs_flag = 16;
+  // 本地id
+  string localId = 17;
+  // 系统id
+  string sys_no = 18;
+  // 交易均价
+  double trade_price = 19;
+  // 交易量
+  int32 trade_vol = 20;
+  // 取消量
+  int32 cancel_vol = 21;
+  // 预留字段
+  string remark = 22;
+  // 创建时间
+  int64 create_tm = 23;
+  // 更新时间
+  int64 update_tm = 24;
+
+  // 交易所id
+  int32 exchange_id=25;
+  // 处罚下单的行情时间
+  int64 quote_time=26;
+  // 取消次数
+  int32 cancel_num=27;
+  //下游下单所需id
+  string channel_id=28;
+  //bus母单编号
+  string bus_strategy_order_id = 29;
+  //成交编号
+  string trade_no = 30;
+  //成交金额
+  double trade_amt = 31;
+  //成交时间
+  int64 trade_tm = 32;
+  //预留字段1
+  int64 mark1 = 33;
+  //预留字段1
+  string mark2 = 34;
+  //重启接入程序的推送标识
+  bool start_push = 35;
+  //部门 券商用来区分管理端权限
+  string department = 36;
+}

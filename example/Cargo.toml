@@ -9,6 +9,7 @@ edition = "2021"
 messaging = { path = "../messaging" }
 crossbeam = "0.8.1"
 protobuf = "2"
+clap = { version = "4.1.1", features = ["derive"] }
 
 [build-dependencies]
 protoc-rust = "2.20.0"

@@ -49,7 +49,7 @@ impl Publisher {
     }
 
     pub fn publish(&self, data: &[u8], len: i32) -> anyhow::Result<()> {
-        println!("Publishing to Aeron");
+        println!("Publishing to Aeron, len: {}", len);
 
         let buffer = AlignedBuffer::with_capacity(len);
         let src_buffer = AtomicBuffer::from_aligned(&buffer);
@@ -57,11 +57,15 @@ impl Publisher {
         src_buffer.put_bytes(0, data);
 
         loop {
-            if let Ok(result) = self.publication.lock().unwrap().offer_part(src_buffer, 0, len) {
-                break;
-            } else {
-                eprintln!("Offer failed, retrying");
-                std::thread::sleep(std::time::Duration::from_millis(100));
+
+            match self.publication.lock().unwrap().offer_part(src_buffer, 0, len) {
+                Ok(_) => {
+                    //println!("Published to Aeron");
+                    break;
+                }
+                Err(e) => {
+                    println!("Publish Error: {:?}", e);
+                }
             }
         }
 

@@ -87,7 +87,7 @@ impl Subscriber {
                         );
             
                         match sender.send(slice_msg.to_vec()) {
-                            Ok(_) => println!("Message sent"),
+                            Ok(_) => {}, //println!("Message sent"),
                             Err(e) => println!("Error sending message: {:?}", e),
                         }
                     }
