@@ -68,7 +68,7 @@ impl Messaging {
 
         let aeron = Aeron::new(ctx);
         if aeron.is_err() {
-            bail!("Could not connect to Aeron media driver");
+            bail!("Could not connect to Aeron media driver dir_prefix:{}, err:{}", settings.dir_prefix, aeron.err().unwrap());
         }
 
         self.settings = Some(settings.clone());
