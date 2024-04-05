@@ -27,7 +27,7 @@ pub fn main() {
     let (sender, receiver ) = crossbeam::channel::unbounded::<Vec<u8>>();    
 
     let topic = "test_topic".to_string();
-    let result  = messaging.response( topic.as_str(), sender);
+    let result  = messaging.new_responser( topic.as_str(), sender);
     if result.is_err() {
         println!("Error: {:?}", result.err());
         return;

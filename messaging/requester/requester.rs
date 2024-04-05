@@ -55,9 +55,9 @@ impl Requester {
         self.publisher.is_connected() && self.subscriber.is_connected()
     }
     
-    pub fn send(&self, data: &[u8], len: i32) {
+    pub fn send(&self, data: &[u8], len: i32) -> anyhow::Result<()> {
         println!("Publishing to Aeron");
-        self.publisher.clone().publish(data, len);
+        self.publisher.clone().publish(data, len)
     }
 
 

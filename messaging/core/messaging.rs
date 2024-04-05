@@ -174,7 +174,7 @@ impl Messaging {
         Ok(())
     }
 
-    pub fn request(&mut self, topic: &str, sender: Sender<Vec<u8>>) -> anyhow::Result<Arc<Requester>> {
+    pub fn new_requester(&mut self, topic: &str, sender: Sender<Vec<u8>>) -> anyhow::Result<Arc<Requester>> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
@@ -195,7 +195,7 @@ impl Messaging {
         Ok(s.clone())
     }
 
-    pub fn response(&mut self, topic: &str, sender: Sender<Vec<u8>>) -> anyhow::Result<Arc<Responser>> {
+    pub fn new_responser(&mut self, topic: &str, sender: Sender<Vec<u8>>) -> anyhow::Result<Arc<Responser>> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
