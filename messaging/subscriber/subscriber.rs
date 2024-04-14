@@ -13,12 +13,12 @@ use aeron_rs::{
         atomic_buffer::{AlignedBuffer, AtomicBuffer},
         logbuffer::header::Header,
         status::status_indicator_reader::channel_status_to_str,
-        strategies::{Strategy,BusySpinIdleStrategy},
+        strategies::{BusySpinIdleStrategy,BackOffIdleStrategy,SleepingIdleStrategy, Strategy},
     },
     context::Context,
     fragment_assembler::{Fragment, FragmentAssembler},
     image::Image,
-    subscription,
+    subscription::{self, Subscription},
     utils::{errors::AeronError, types::Index},
 };
 use anyhow::{bail, Result};
@@ -38,32 +38,31 @@ impl Subscriber {
         stream_id: i32,
         sender: Sender<Vec<u8>>,
     ) -> Self {
-        let mut aeron = aeron.lock().unwrap();
+        let mut subscription : Arc<Mutex<Subscription>>;
+        {
+            let mut aeron = aeron.lock().unwrap();
 
-        println!(
-            "Adding subscription to Aeron with channel {} and stream id {}",
-            channel, stream_id
-        );
-        let subscription_id = aeron
-            .add_subscription(str_to_c(channel), stream_id)
-            .expect("Could not add subscription");
+            println!(
+                "Adding subscription to Aeron with channel {} and stream id {}",
+                channel, stream_id
+            );
+            let subscription_id = aeron
+                .add_subscription(str_to_c(channel), stream_id)
+                .expect("Could not add subscription");
 
-        let mut subscription = aeron.find_subscription(subscription_id);
-        while subscription.is_err() {
-            std::thread::sleep(std::time::Duration::from_millis(100));
-            subscription = aeron.find_subscription(subscription_id);
+            let mut sub = aeron.find_subscription(subscription_id);
+            loop {
+                if sub.is_ok() {
+                    break;
+                }               
+                sub = aeron.find_subscription(subscription_id);
+            }
+
+            println!("Subscription channel {} stream {} is found", channel, stream_id);
+            subscription = sub.unwrap();
         }
-        let subscription: std::sync::Arc<std::sync::Mutex<subscription::Subscription>> =
-            subscription.unwrap();
 
-        let channel_status = subscription.lock().unwrap().channel_status();
-        println!(
-            "Subscription channel status for {} is {}",
-            channel,
-            channel_status_to_str(channel_status)
-        );
-
-        let poll_idle_strategy = BusySpinIdleStrategy::default();
+        let poll_idle_strategy = SleepingIdleStrategy::new(1);
         let mut poll_thread = None;
         let running = Arc::new(AtomicBool::new(true));
         {

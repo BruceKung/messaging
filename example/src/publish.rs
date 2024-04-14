@@ -121,9 +121,6 @@ pub fn main() {
         }
         index += 1;
 
-        if index > args.count.as_ref().unwrap().clone() {
-            std::thread::sleep(std::time::Duration::from_millis(1000));
-            index = 0;
-        }
+        std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }

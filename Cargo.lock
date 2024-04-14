@@ -509,6 +509,7 @@ dependencies = [
  "clap 4.4.11",
  "crossbeam",
  "messaging",
+ "pretty_env_logger",
  "protobuf",
  "protoc-rust",
 ]
@@ -761,6 +762,7 @@ version = "0.1.0"
 dependencies = [
  "aeron-rs",
  "anyhow",
+ "chrono",
  "crossbeam",
  "dashmap",
  "lazy_static",

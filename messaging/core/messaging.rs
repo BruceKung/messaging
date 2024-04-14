@@ -3,6 +3,7 @@ use crate::subscriber::subscriber::Subscriber;
 use crate::{
     base::settings::Settings, requester::requester::Requester, responser::responser::Responser,
 };
+use aeron_rs::concurrent::counters::CountersReader;
 use aeron_rs::{
     aeron::Aeron,
     concurrent::{
@@ -65,6 +66,7 @@ impl Messaging {
         ctx.set_unavailable_image_handler(Box::new(Self::unavailable_image_handler));
         ctx.set_error_handler(Box::new(Self::error_handler));
         ctx.set_pre_touch_mapped_memory(true);
+        ctx.set_unavailable_counter_handler(Box::new(Self::unavailable_counter_handler));
 
         let aeron = Aeron::new(ctx);
         if aeron.is_err() {
@@ -263,6 +265,16 @@ impl Messaging {
             channel.to_str().unwrap(),
             stream_id,
             correlation_id
+        );
+    }
+
+    pub fn unavailable_counter_handler(counters_reader: &CountersReader, registration_id: i64, counter_id: i32) {
+        println!(
+            "unavailable_counter_handler: counter deallocated with registration_id {}, counter_id {}, label {}, value {}",
+            registration_id,
+            counter_id,
+            counters_reader.counter_label(counter_id).unwrap().to_str().unwrap(),
+            counters_reader.counter_value(counter_id).unwrap()
         );
     }
 
