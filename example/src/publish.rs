@@ -64,7 +64,8 @@ struct Args {
 }
 
 pub fn main() {
-
+    pretty_env_logger::init();
+    
     let args = Args::parse();
     let dir_prefix = args.dir_prefix.unwrap_or("".to_string());
 
