@@ -28,11 +28,12 @@ use aeron_rs::{
         status::status_indicator_reader::channel_status_to_str,
     },
     context::Context,
-    example_config::{DEFAULT_CHANNEL, DEFAULT_STREAM_ID},
+    example_config::{DEFAULT_CHANNEL, DEFAULT_STREAM_ID, DEFAULT_FRAGMENT_COUNT_LIMIT, DEFAULT_LINGER_TIMEOUT_MS, DEFAULT_NUMBER_OF_MESSAGES, DEFAULT_MESSAGE_LENGTH},
     utils::errors::AeronError,
 };
 use lazy_static::lazy_static;
 use nix::NixPath;
+use structopt::StructOpt;
 
 lazy_static! {
     pub static ref RUNNING: AtomicBool = AtomicBool::from(true);
@@ -78,7 +79,7 @@ struct CmdOpts {
     #[structopt(short = "L", long, default_value = DEFAULT_MESSAGE_LENGTH, help = "Message length")]
     message_length: i32,
     #[structopt(short = "l", long, default_value = DEFAULT_LINGER_TIMEOUT_MS, help = "Linger timeout")]
-    linger_timeout_ms: i32,
+    linger_timeout_ms: u64,
     #[structopt(short = "f", long, default_value = DEFAULT_FRAGMENT_COUNT_LIMIT, help = "Fragment Count Limit")]
     fragment_count_limit: i32,
     #[structopt(short = "P", long, help = "Show publication progress")]
