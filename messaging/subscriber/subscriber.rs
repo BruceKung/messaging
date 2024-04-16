@@ -37,6 +37,7 @@ impl Subscriber {
         channel: &str,
         stream_id: i32,
         sender: Sender<Vec<u8>>,
+        running : Arc<AtomicBool>
     ) -> Self {
         let mut subscription : Arc<Mutex<Subscription>>;
         {
@@ -64,7 +65,6 @@ impl Subscriber {
 
         let poll_idle_strategy = SleepingIdleStrategy::new(1);
         let mut poll_thread = Arc::new(None);
-        let running = Arc::new(AtomicBool::new(true));
         {
             let subscription = subscription.clone();
             let running = running.clone();
@@ -111,7 +111,7 @@ impl Subscriber {
         }
 
         Self {
-            running : running,
+            running,
             poll_thread,
         }
     }

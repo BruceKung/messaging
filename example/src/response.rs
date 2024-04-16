@@ -1,4 +1,6 @@
 use std::ffi::CString;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
 use messaging::core::messaging::Messaging;
 use messaging::base::settings::Settings;
@@ -15,6 +17,8 @@ pub fn main() {
         linger_timeout_ms: 1000,
     };
 
+    let running = Arc::new(AtomicBool::new(true));
+
     let mut messaging = Messaging::new();
     match messaging.connect(&setting) {
         Ok(_) => {}
@@ -27,7 +31,7 @@ pub fn main() {
     let (sender, receiver ) = crossbeam::channel::unbounded::<Vec<u8>>();    
 
     let topic = "test_topic".to_string();
-    let result  = messaging.new_responser( topic.as_str(), sender);
+    let result  = messaging.new_responser( topic.as_str(), sender, running.clone());
     if result.is_err() {
         println!("Error: {:?}", result.err());
         return;

@@ -39,11 +39,12 @@ impl Requester {
         request_stream_id: i32,
         response_stream_id: i32,
         sender: Sender<Vec<u8>>,
+        running : Arc<AtomicBool>
     ) -> Self {
 
         println!("Adding requester to Aeron with channel {} and stream id {},{}", channel, request_stream_id,response_stream_id);
         let publisher = Arc::new(Publisher::new(aeron.clone(), channel, request_stream_id));
-        let subscriber = Arc::new(Subscriber::new(aeron.clone(), channel, response_stream_id, sender));
+        let subscriber = Arc::new(Subscriber::new(aeron.clone(), channel, response_stream_id, sender, running.clone()));
 
         Self {
             publisher,

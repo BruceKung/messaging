@@ -22,6 +22,7 @@ use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use once_cell::sync::Lazy;
+use std::sync::atomic::AtomicBool;
 use std::{
     ffi::CString,
     hash::{self, Hash, Hasher},
@@ -137,7 +138,7 @@ impl Messaging {
         Ok(())
     }
 
-    pub fn subscribe(&mut self, topic : &str, sender: Sender<Vec<u8>>) -> anyhow::Result<()> {
+    pub fn subscribe(&mut self, topic : &str, sender: Sender<Vec<u8>>, running : Arc<AtomicBool>) -> anyhow::Result<()> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
@@ -149,6 +150,7 @@ impl Messaging {
             self.settings.as_ref().unwrap().channel.as_str(),
             stream_id,
             sender,
+            running,
         ));
         s.subscribe();
         self.subscribers.insert(stream_id, s);
@@ -176,7 +178,7 @@ impl Messaging {
         Ok(())
     }
 
-    pub fn new_requester(&mut self, topic: &str, sender: Sender<Vec<u8>>) -> anyhow::Result<Arc<Requester>> {
+    pub fn new_requester(&mut self, topic: &str, sender: Sender<Vec<u8>>, running : Arc<AtomicBool>) -> anyhow::Result<Arc<Requester>> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
@@ -190,6 +192,7 @@ impl Messaging {
             pub_stream_id,
             sub_stream_id,
             sender,
+            running,
         ));
 
         self.requesters.insert(topic.to_owned(), s.clone());
@@ -197,7 +200,7 @@ impl Messaging {
         Ok(s.clone())
     }
 
-    pub fn new_responser(&mut self, topic: &str, sender: Sender<Vec<u8>>) -> anyhow::Result<Arc<Responser>> {
+    pub fn new_responser(&mut self, topic: &str, sender: Sender<Vec<u8>>, running : Arc<AtomicBool>) -> anyhow::Result<Arc<Responser>> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
@@ -211,6 +214,7 @@ impl Messaging {
             sub_stream_id,
             pub_stream_id,
             sender,
+            running,
         ));
 
         self.responsers.insert(topic.to_owned(), s.clone());
