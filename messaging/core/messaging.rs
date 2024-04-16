@@ -38,7 +38,7 @@ pub struct Messaging {
     pub settings: Option<Settings>,
     pub aeron: Option<Arc<Mutex<Aeron>>>,
     pub publishers: DashMap<i32, Arc<Publisher>>,
-    pub subscribers: DashMap<i32, Subscriber>,
+    pub subscribers: DashMap<i32, Arc<Subscriber>>,
     pub requesters: DashMap<String, Arc<Requester>>,
     pub responsers: DashMap<String, Arc<Responser>>,
 }
@@ -144,12 +144,12 @@ impl Messaging {
 
         let stream_id = Self::hash_stream_id(topic);
 
-        let mut s = Subscriber::new(
+        let s = Arc::new( Subscriber::new(
             self.aeron.as_ref().unwrap().clone(),
             self.settings.as_ref().unwrap().channel.as_str(),
             stream_id,
             sender,
-        );
+        ));
         s.subscribe();
         self.subscribers.insert(stream_id, s);
         Ok(())
@@ -205,7 +205,7 @@ impl Messaging {
         let pub_stream_id = Self::hash_stream_id(format!("{}_{}", topic, "requester").as_str());
         let sub_stream_id = Self::hash_stream_id(format!("{}_{}", topic, "responser").as_str());
 
-        let mut s = Arc::new(Responser::new(
+        let s = Arc::new(Responser::new(
             self.aeron.as_ref().unwrap().clone(),
             self.settings.as_ref().unwrap().channel.as_str(),
             sub_stream_id,
@@ -216,6 +216,33 @@ impl Messaging {
         self.responsers.insert(topic.to_owned(), s.clone());
 
         Ok(s.clone())
+    }
+
+    pub fn release(&mut self) {
+        if self.settings.is_none() || self.aeron.is_none() {
+            eprintln!("Please call connect first!")
+        }
+
+        self.publishers.iter_mut().for_each(|p| {
+            p.value().release();
+        });
+
+        self.subscribers.iter_mut().for_each(|s| {
+            s.value().release();
+        });
+
+        self.requesters.iter_mut().for_each(|r| {
+            r.value().release();
+        });
+
+        self.responsers.iter_mut().for_each(|r| {
+            r.value().release();
+        });
+
+        self.publishers.clear();
+        self.subscribers.clear();
+        self.requesters.clear();
+        self.responsers.clear();
     }
 
     fn hash_stream_id(topic: &str) -> i32 {
@@ -285,13 +312,6 @@ impl Messaging {
 
 impl Drop for Messaging {
     fn drop(&mut self) {
-        if self.settings.is_none() || self.aeron.is_none() {
-            eprintln!("Please call connect first!")
-        }
-
-        self.publishers.clear();
-        self.subscribers.clear();
-        self.requesters.clear();
-        self.responsers.clear();
+        self.release();
     }
 }

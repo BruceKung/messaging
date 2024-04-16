@@ -28,7 +28,7 @@ static DEFAULT_FRAGMENT_COUNT_LIMIT : i32 = 10;
 
 pub struct Subscriber {
     pub running : Arc<AtomicBool>,
-    pub poll_thread : Option<thread::JoinHandle<()>>,
+    pub poll_thread : Arc<Option<thread::JoinHandle<()>>>,
 }
 
 impl Subscriber {
@@ -63,7 +63,7 @@ impl Subscriber {
         }
 
         let poll_idle_strategy = SleepingIdleStrategy::new(1);
-        let mut poll_thread = None;
+        let mut poll_thread = Arc::new(None);
         let running = Arc::new(AtomicBool::new(true));
         {
             let subscription = subscription.clone();
@@ -102,7 +102,7 @@ impl Subscriber {
             }) {
                 Ok(thread) => {
                     println!("Poll thread started");
-                    poll_thread = Some(thread);
+                    poll_thread = Arc::new(Some(thread));
                 }
                 Err(e) => {
                     println!("Error starting poll thread: {:?}", e);
@@ -119,21 +119,15 @@ impl Subscriber {
     pub fn is_connected(&self) -> bool {
         true
     }
-    pub fn subscribe(&mut self) -> anyhow::Result<()> {
+    pub fn subscribe(&self) -> anyhow::Result<()> {
         println!("Subscribing to Aeron");
 
         Ok(())
     }
 
-    pub fn release(&mut self) -> anyhow::Result<()> {
+    pub fn release(&self) -> anyhow::Result<()> {
         println!("Unsubscribing from Aeron");
         self.running.store(false, Ordering::SeqCst);
-        if self.poll_thread.is_some() {
-            match self.poll_thread.take().unwrap().join() {
-                Ok(_) => println!("Poll thread stopped"),
-                Err(e) => bail!("Error stopping poll thread: {:?}", e),
-            }
-        }
         Ok(())
     }
  

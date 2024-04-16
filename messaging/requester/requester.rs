@@ -60,6 +60,11 @@ impl Requester {
         self.publisher.clone().publish(data, len)
     }
 
+    pub fn release (&self) {
+        self.publisher.release();
+        self.subscriber.release();
+    }
+    
 
 }
 
