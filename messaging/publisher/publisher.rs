@@ -27,16 +27,9 @@ impl Publisher {
 
         let mut publication = aeron.lock().unwrap().find_publication(publication_id);
         while publication.is_err() {
-            std::thread::sleep(std::time::Duration::from_millis(100));
             publication = aeron.lock().unwrap().find_publication(publication_id);
         }
         let publication: std::sync::Arc<std::sync::Mutex<publication::Publication>> = publication.unwrap();
-
-        let channel_status = publication.lock().unwrap().channel_status();
-        println!(
-            "Publication channel status: {}",
-            channel_status_to_str(channel_status)
-        );
 
         println!("Publication {} created", stream_id);
         Self {

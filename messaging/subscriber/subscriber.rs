@@ -53,7 +53,7 @@ impl Subscriber {
             loop {
                 if sub.is_ok() {
                     break;
-                }               
+                }          
                 sub = aeron.lock().unwrap().find_subscription(subscription_id);
             }
 
