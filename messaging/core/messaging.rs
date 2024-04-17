@@ -61,13 +61,13 @@ impl Messaging {
         if !settings.dir_prefix.is_empty() {
             ctx.set_aeron_dir(settings.dir_prefix.clone());
         }
-        ctx.set_new_exclusive_publication_handler(Box::new(Self::on_new_publication_handler));
-        ctx.set_new_subscription_handler(Box::new(Self::on_new_subscription_handler));
-        ctx.set_available_image_handler(Box::new(Self::available_image_handler));
-        ctx.set_unavailable_image_handler(Box::new(Self::unavailable_image_handler));
+        //ctx.set_new_exclusive_publication_handler(Box::new(Self::on_new_publication_handler));
+        //ctx.set_new_subscription_handler(Box::new(Self::on_new_subscription_handler));
+        //ctx.set_available_image_handler(Box::new(Self::available_image_handler));
+        //ctx.set_unavailable_image_handler(Box::new(Self::unavailable_image_handler));
         ctx.set_error_handler(Box::new(Self::error_handler));
         ctx.set_pre_touch_mapped_memory(true);
-        ctx.set_unavailable_counter_handler(Box::new(Self::unavailable_counter_handler));
+        //ctx.set_unavailable_counter_handler(Box::new(Self::unavailable_counter_handler));
 
         let aeron = Aeron::new(ctx);
         if aeron.is_err() {
