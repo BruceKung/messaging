@@ -539,6 +539,13 @@ impl ClientConductor {
     ) -> Result<Arc<LogBuffers>, AeronError> {
         if let Some(lb) = self.log_buffers_by_registration_id.get_mut(&registration_id) {
             lb.time_of_last_state_change_ms = MAX_MOMENT;
+            log!(
+                trace,
+                "get_log_buffers: on channel:{} registration_id:{} REUSED",
+                channel.to_str().unwrap(),
+                registration_id,
+            );
+
             Ok(lb.log_buffers.clone())
         } else {
             let touch = self.pre_touch_mapped_memory && !channel.to_string_lossy().contains("sparse=true");
@@ -548,6 +555,12 @@ impl ClientConductor {
             self.log_buffers_by_registration_id
                 .insert(registration_id, LogBuffersDefn::new(log_buffers.clone()));
 
+            log!(
+                trace,
+                "get_log_buffers: on channel:{} registration_id:{} CREATED",
+                channel.to_str().unwrap(),
+                registration_id,
+            );
             Ok(log_buffers)
         }
     }
