@@ -96,13 +96,6 @@ pub fn main() {
 
     let publiser = result.unwrap();
 
-    loop {
-        if publiser.is_connected() {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(100));
-    }
-
     println!("Publisher connected");
 
     let mut index : i64 = 0;

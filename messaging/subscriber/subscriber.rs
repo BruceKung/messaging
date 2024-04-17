@@ -27,7 +27,7 @@ use crossbeam::channel::Sender;
 static DEFAULT_FRAGMENT_COUNT_LIMIT : i32 = 10;
 
 pub struct Subscriber {
-    pub running : Arc<AtomicBool>,
+    pub stop : Arc<AtomicBool>,
     pub poll_thread : Arc<Option<thread::JoinHandle<()>>>,
 }
 
@@ -37,7 +37,7 @@ impl Subscriber {
         channel: &str,
         stream_id: i32,
         sender: Sender<Vec<u8>>,
-        running : Arc<AtomicBool>
+        stop : Arc<AtomicBool>
     ) -> Self {
         let mut subscription : Arc<Mutex<Subscription>>;
         {
@@ -65,7 +65,7 @@ impl Subscriber {
         let mut poll_thread = Arc::new(None);
         {
             let subscription = subscription.clone();
-            let running = running.clone();
+            let stop = stop.clone();
             match thread::Builder::new()
             .name(String::from("Poll thread"))
             .spawn(move || {
@@ -93,7 +93,7 @@ impl Subscriber {
                 let mut fragment_assembler = FragmentAssembler::new(&mut handler, None);
                 let mut fragment_handler = fragment_assembler.handler();
     
-                while running.load(Ordering::SeqCst) {
+                while !stop.load(Ordering::SeqCst) {
                     let fragments_read = subscription.lock().unwrap().poll(&mut fragment_handler, DEFAULT_FRAGMENT_COUNT_LIMIT);
                     poll_idle_strategy.idle_opt(fragments_read);
                 }
@@ -108,10 +108,12 @@ impl Subscriber {
             }
         }
 
+        println!("Subscriber {} created", stream_id);
         Self {
-            running,
+            stop,
             poll_thread,
         }
+
     }
 
     pub fn is_connected(&self) -> bool {
@@ -119,13 +121,11 @@ impl Subscriber {
     }
     pub fn subscribe(&self) -> anyhow::Result<()> {
         println!("Subscribing to Aeron");
-
         Ok(())
     }
 
     pub fn release(&self) -> anyhow::Result<()> {
         println!("Unsubscribing from Aeron");
-        self.running.store(false, Ordering::SeqCst);
         Ok(())
     }
  

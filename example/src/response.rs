@@ -17,7 +17,7 @@ pub fn main() {
         linger_timeout_ms: 1000,
     };
 
-    let running = Arc::new(AtomicBool::new(true));
+    let stop = Arc::new(AtomicBool::new(false));
 
     let mut messaging = Messaging::new();
     match messaging.connect(&setting) {
@@ -31,7 +31,7 @@ pub fn main() {
     let (sender, receiver ) = crossbeam::channel::unbounded::<Vec<u8>>();    
 
     let topic = "test_topic".to_string();
-    let result  = messaging.new_responser( topic.as_str(), sender, running.clone());
+    let result  = messaging.new_responser( topic.as_str(), sender, stop.clone());
     if result.is_err() {
         println!("Error: {:?}", result.err());
         return;

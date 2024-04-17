@@ -38,6 +38,7 @@ impl Publisher {
             channel_status_to_str(channel_status)
         );
 
+        println!("Publication {} created", stream_id);
         Self {
             publication : publication
         }

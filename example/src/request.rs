@@ -25,12 +25,12 @@ pub fn main() {
             return;
         }
     }
-    let running = Arc::new(AtomicBool::new(true));
+    let stop = Arc::new(AtomicBool::new(false));
 
     let (sender, receiver ) = crossbeam::channel::unbounded::<Vec<u8>>();    
 
     let topic = "test_topic".to_string();
-    let result  = messaging.new_requester( topic.as_str(), sender, running.clone());
+    let result  = messaging.new_requester( topic.as_str(), sender, stop.clone());
     if result.is_err() {
         println!("Error: {:?}", result.err());
         return;
