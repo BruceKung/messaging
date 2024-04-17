@@ -77,7 +77,6 @@ impl Messaging {
         self.settings = Some(settings.clone());
         self.aeron = Some(Arc::new(Mutex::new(aeron.unwrap())));
 
-        print!("Aeron instance is closed");
         Ok(())
     }
 
@@ -252,7 +251,8 @@ impl Messaging {
     fn hash_stream_id(topic: &str) -> i32 {
         let mut state = DefaultHasher::new();
         topic.hash(&mut state) ;
-        state.finish() as i32
+        static MAX_ID: u64  = 100_000_000;
+        ( state.finish() % MAX_ID) as i32
     }
 
     pub fn on_new_publication_handler(

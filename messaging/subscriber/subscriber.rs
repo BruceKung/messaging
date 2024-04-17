@@ -41,22 +41,20 @@ impl Subscriber {
     ) -> Self {
         let mut subscription : Arc<Mutex<Subscription>>;
         {
-            let mut aeron = aeron.lock().unwrap();
-
             println!(
                 "Adding subscription to Aeron with channel {} and stream id {}",
                 channel, stream_id
             );
-            let subscription_id = aeron
+            let subscription_id = aeron.lock().unwrap()
                 .add_subscription(str_to_c(channel), stream_id)
                 .expect("Could not add subscription");
 
-            let mut sub = aeron.find_subscription(subscription_id);
+            let mut sub = aeron.lock().unwrap().find_subscription(subscription_id);
             loop {
                 if sub.is_ok() {
                     break;
                 }               
-                sub = aeron.find_subscription(subscription_id);
+                sub = aeron.lock().unwrap().find_subscription(subscription_id);
             }
 
             println!("Subscription channel {} stream {} is found", channel, stream_id);

@@ -19,17 +19,16 @@ pub struct Publisher {
 
 impl Publisher {
     pub fn new(aeron:  Arc<Mutex<Aeron>> , channel : &str, stream_id : i32 ) -> Self {
-        let mut aeron = aeron.lock().unwrap();
         
         println!("Adding publication to Aeron with channel {} and stream id {}", channel, stream_id);
-        let publication_id = aeron
+        let publication_id = aeron.lock().unwrap()
             .add_publication(str_to_c(channel), stream_id)
             .expect("Could not add publication");
 
-        let mut publication = aeron.find_publication(publication_id);
+        let mut publication = aeron.lock().unwrap().find_publication(publication_id);
         while publication.is_err() {
             std::thread::sleep(std::time::Duration::from_millis(100));
-            publication = aeron.find_publication(publication_id);
+            publication = aeron.lock().unwrap().find_publication(publication_id);
         }
         let publication: std::sync::Arc<std::sync::Mutex<publication::Publication>> = publication.unwrap();
 
