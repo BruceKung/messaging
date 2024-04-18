@@ -6,12 +6,15 @@
 1) 在cargo.toml 中增加依赖
 ```
 [dependencies]
+//本次升级
+messaging = { git = "ssh://git@code.non-convex.com/gateway/messaging.git", tag="1.1.0" }
+//增加退出机制需要的依赖
 signal-hook = { version = "0.3.17", features = ["extended-siginfo"] }
 // 也建议增加pretty_env_logger依赖，可以根据环境变量，决定打印 aeron-rs日志
 pretty_env_logger = "0.4"
 ```
 
-2) 实现退出信号回调方法
+2) 增加退出机制，处理退出信号(可选，如果选择不支持，默认传false到messaging相关接口即可)
 ```
 use signal_hook::flag;
 
