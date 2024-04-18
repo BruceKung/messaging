@@ -34,6 +34,7 @@ use crate::{
         ring_buffer::ManyToOneRingBuffer,
         strategies::SleepingIdleStrategy,
     },
+    log,
     context::{Context, OnAvailableCounter, OnAvailableImage, OnCloseClient, OnUnavailableCounter, OnUnavailableImage},
     counter::Counter,
     driver_proxy::DriverProxy,
@@ -232,7 +233,7 @@ impl Aeron {
      */
     pub fn find_publication(&mut self, registration_id: i64) -> Result<Arc<Mutex<Publication>>, AeronError> {
         if let Ok(mut conductor) = self.conductor.lock() {
-            log::debug!("Trying to find publication");
+            log!(trace, "Trying to find publication");
             conductor.find_publication(registration_id)
         } else {
             Err(GenericError::PublicationNotFound.into())
