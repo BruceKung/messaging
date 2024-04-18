@@ -130,7 +130,13 @@ impl<
                 }
             }
 
-            match self.agent.lock().expect("Mutex poisoned").do_work() {
+            let mut result : Result<i32, AeronError> = Ok(0);
+            {
+                let mut agent = self.agent.lock().expect("Mutex poisoned");
+                result = agent.do_work();
+            }
+            
+            match result {
                 Ok(work_cnt) => self.idle_strategy.idle_opt(work_cnt),
                 Err(error) => self.exception_handler.call(error),
             }
