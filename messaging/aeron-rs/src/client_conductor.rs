@@ -915,7 +915,7 @@ impl ClientConductor {
     }
 
     pub fn find_subscription(&mut self, registration_id: i64) -> Result<Arc<Mutex<Subscription>>, AeronError> {
-        log!(trace, "find_subscription: with registration_id {}", registration_id);
+        //log!(trace, "find_subscription: with registration_id {}", registration_id);
 
         self.ensure_not_reentrant();
         self.ensure_open()?;
