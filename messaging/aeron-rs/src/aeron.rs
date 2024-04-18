@@ -231,10 +231,12 @@ impl Aeron {
      * @return Publication associated with the registration_id
      */
     pub fn find_publication(&mut self, registration_id: i64) -> Result<Arc<Mutex<Publication>>, AeronError> {
-        self.conductor
-            .lock()
-            .expect("Mutex poisoned")
-            .find_publication(registration_id)
+        if let Ok(mut conductor) = self.conductor.lock() {
+            log::debug!("Trying to find publication");
+            conductor.find_publication(registration_id)
+        } else {
+            Err(GenericError::PublicationNotFound.into())
+        }
     }
 
     /**

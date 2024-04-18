@@ -60,7 +60,10 @@ impl Subscriber {
                     break;
                 }          
                 println!("Subscription channel {} stream {} is not found", channel, stream_id);
-                sub = aeron.lock().unwrap().find_subscription(subscription_id);
+                if let Ok(mut aeron) = aeron.lock() {
+                    println!("Trying to find subscription");
+                    sub = aeron.find_subscription(subscription_id);
+                }
             }
 
             println!("Subscription channel {} stream {} is found", channel, stream_id);
