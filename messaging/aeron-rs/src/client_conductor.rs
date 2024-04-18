@@ -539,12 +539,6 @@ impl ClientConductor {
     ) -> Result<Arc<LogBuffers>, AeronError> {
         if let Some(lb) = self.log_buffers_by_registration_id.get_mut(&registration_id) {
             lb.time_of_last_state_change_ms = MAX_MOMENT;
-            log!(
-                trace,
-                "get_log_buffers: on channel:{} registration_id:{} REUSED",
-                channel.to_str().unwrap(),
-                registration_id,
-            );
 
             Ok(lb.log_buffers.clone())
         } else {
@@ -555,12 +549,6 @@ impl ClientConductor {
             self.log_buffers_by_registration_id
                 .insert(registration_id, LogBuffersDefn::new(log_buffers.clone()));
 
-            log!(
-                trace,
-                "get_log_buffers: on channel:{} registration_id:{} CREATED",
-                channel.to_str().unwrap(),
-                registration_id,
-            );
             Ok(log_buffers)
         }
     }
@@ -1624,13 +1612,6 @@ impl DriverListener for ClientConductor {
             let _callback_guard = CallbackGuard::new(&mut self.is_in_callback);
             self.on_new_subscription_handler
                 .call(state.channel.clone(), state.stream_id, registration_id);
-
-            log!(
-                trace,
-                "on_subscription_ready exit: registration_id {}, channel_status_id {}",
-                registration_id,
-                channel_status_id
-            );
         }
     }
 
