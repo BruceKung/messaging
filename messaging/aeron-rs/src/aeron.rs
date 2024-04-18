@@ -341,10 +341,12 @@ impl Aeron {
      * @return Subscription associated with the registration_id
      */
     pub fn find_subscription(&mut self, registration_id: i64) -> Result<Arc<Mutex<Subscription>>, AeronError> {
-        self.conductor
-            .lock()
-            .expect("Mutex poisoned")
-            .find_subscription(registration_id)
+        if let Ok(mut conductor) = self.conductor.lock() {
+            log!(trace, "Trying to find subscription");
+            conductor.find_subscription(registration_id)
+        } else {
+            Err(GenericError::SubscriptionNotFound.into())
+        }
     }
 
     /**
