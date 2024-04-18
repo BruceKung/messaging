@@ -1,4 +1,4 @@
-use std::{ffi::CString, time::UNIX_EPOCH};
+use std::{ffi::CString, sync::{atomic::AtomicBool, Arc}, time::UNIX_EPOCH};
 use messaging::core::messaging::Messaging;
 use messaging::base::settings::Settings;
 use messaging::publisher::publisher::Publisher;
@@ -19,7 +19,9 @@ struct Args {
 }
 
 pub fn main() {
+    pretty_env_logger::init();
 
+    let stop = Arc::new(AtomicBool::new(false));
     let args = Args::parse();
     let dir_prefix = args.dir_prefix.unwrap_or("".to_string());
 
@@ -44,7 +46,7 @@ pub fn main() {
 
     let (sender, receiver ) = crossbeam::channel::unbounded::<Vec<u8>>();
 
-    match messaging.subscribe(topic.as_str(), sender) {
+    match messaging.subscribe(topic.as_str(), sender, stop.clone()) {
         Ok(_) => {}
         Err(e) => {
             println!("Error: {:?}", e);
@@ -70,5 +72,7 @@ pub fn main() {
             index = 0;
         } 
     }
+
+    println!("Exiting");
 
 }

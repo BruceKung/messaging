@@ -18,6 +18,7 @@ use std::alloc::{alloc_zeroed, dealloc, Layout};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use cache_line_size::CACHE_LINE_SIZE;
+use chrono::{Local, TimeZone};
 
 use crate::utils::types::{Index, Moment};
 
@@ -38,6 +39,13 @@ pub fn unix_time_ns() -> Moment {
     let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Can't get UNIX epoch.");
 
     since_the_epoch.as_secs() * 1_000_000_000 + since_the_epoch.subsec_nanos() as u64
+}
+
+pub fn unix_time_ms_string() -> String {
+    let milliseconds_since_epoch = unix_time_ms();
+    // yyyy-MM-dd HH:mm:ss.SSSZ
+    let time = Local.timestamp_millis_opt(milliseconds_since_epoch as i64).unwrap();
+    time.to_string()
 }
 
 /// Accepts Aeron style ASCII string (without zero termination). Outputs Rust String.

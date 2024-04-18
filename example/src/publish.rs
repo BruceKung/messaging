@@ -64,7 +64,8 @@ struct Args {
 }
 
 pub fn main() {
-
+    pretty_env_logger::init();
+    
     let args = Args::parse();
     let dir_prefix = args.dir_prefix.unwrap_or("".to_string());
 
@@ -95,13 +96,6 @@ pub fn main() {
 
     let publiser = result.unwrap();
 
-    loop {
-        if publiser.is_connected() {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(100));
-    }
-
     println!("Publisher connected");
 
     let mut index : i64 = 0;
@@ -121,9 +115,6 @@ pub fn main() {
         }
         index += 1;
 
-        if index > args.count.as_ref().unwrap().clone() {
-            std::thread::sleep(std::time::Duration::from_millis(1000));
-            index = 0;
-        }
+        std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }

@@ -13,13 +13,13 @@ use aeron_rs::{
         atomic_buffer::{AlignedBuffer, AtomicBuffer},
         logbuffer::header::Header,
         status::status_indicator_reader::channel_status_to_str,
-        strategies::{Strategy,BusySpinIdleStrategy},
+        strategies::{BackOffIdleStrategy, BusySpinIdleStrategy, SleepingIdleStrategy, Strategy},
     },
     context::Context,
     fragment_assembler::{Fragment, FragmentAssembler},
     image::Image,
-    subscription,
-    utils::{errors::AeronError, types::Index},
+    subscription::{self, Subscription},
+    utils::{errors::{AeronError, GenericError}, types::Index},
 };
 use anyhow::{bail, Result};
 use crossbeam::channel::Sender;
@@ -27,8 +27,8 @@ use crossbeam::channel::Sender;
 static DEFAULT_FRAGMENT_COUNT_LIMIT : i32 = 10;
 
 pub struct Subscriber {
-    pub running : Arc<AtomicBool>,
-    pub poll_thread : Option<thread::JoinHandle<()>>,
+    pub stop : Arc<AtomicBool>,
+    pub poll_thread : Arc<Option<thread::JoinHandle<()>>>,
 }
 
 impl Subscriber {
@@ -37,38 +37,42 @@ impl Subscriber {
         channel: &str,
         stream_id: i32,
         sender: Sender<Vec<u8>>,
+        stop : Arc<AtomicBool>
     ) -> Self {
-        let mut aeron = aeron.lock().unwrap();
+        let mut subscription : Arc<Mutex<Subscription>>;
+        {
+            println!(
+                "Adding subscription to Aeron with channel {} and stream id {}",
+                channel, stream_id
+            );
 
-        println!(
-            "Adding subscription to Aeron with channel {} and stream id {}",
-            channel, stream_id
-        );
-        let subscription_id = aeron
-            .add_subscription(str_to_c(channel), stream_id)
-            .expect("Could not add subscription");
+            let mut subscription_id = 0;
+            
+            {
+                subscription_id = aeron.lock().unwrap()
+                .add_subscription(str_to_c(channel), stream_id)
+                .expect("Could not add subscription");
+            } 
 
-        let mut subscription = aeron.find_subscription(subscription_id);
-        while subscription.is_err() {
-            std::thread::sleep(std::time::Duration::from_millis(100));
-            subscription = aeron.find_subscription(subscription_id);
+            let mut sub : Result<Arc<Mutex<Subscription>>, AeronError> = Err(GenericError::SubscriptionNotFound.into());
+            loop {
+                if sub.is_ok() {
+                    break;
+                }          
+                if let Ok(mut aeron) = aeron.lock() {
+                    sub = aeron.find_subscription(subscription_id);
+                }
+            }
+
+            println!("Subscription channel {} stream {} is found", channel, stream_id);
+            subscription = sub.unwrap();
         }
-        let subscription: std::sync::Arc<std::sync::Mutex<subscription::Subscription>> =
-            subscription.unwrap();
 
-        let channel_status = subscription.lock().unwrap().channel_status();
-        println!(
-            "Subscription channel status for {} is {}",
-            channel,
-            channel_status_to_str(channel_status)
-        );
-
-        let poll_idle_strategy = BusySpinIdleStrategy::default();
-        let mut poll_thread = None;
-        let running = Arc::new(AtomicBool::new(true));
+        let poll_idle_strategy = SleepingIdleStrategy::new(1);
+        let mut poll_thread = Arc::new(None);
         {
             let subscription = subscription.clone();
-            let running = running.clone();
+            let stop = stop.clone();
             match thread::Builder::new()
             .name(String::from("Poll thread"))
             .spawn(move || {
@@ -96,14 +100,14 @@ impl Subscriber {
                 let mut fragment_assembler = FragmentAssembler::new(&mut handler, None);
                 let mut fragment_handler = fragment_assembler.handler();
     
-                while running.load(Ordering::SeqCst) {
+                while !stop.load(Ordering::SeqCst) {
                     let fragments_read = subscription.lock().unwrap().poll(&mut fragment_handler, DEFAULT_FRAGMENT_COUNT_LIMIT);
                     poll_idle_strategy.idle_opt(fragments_read);
                 }
             }) {
                 Ok(thread) => {
                     println!("Poll thread started");
-                    poll_thread = Some(thread);
+                    poll_thread = Arc::new(Some(thread));
                 }
                 Err(e) => {
                     println!("Error starting poll thread: {:?}", e);
@@ -111,30 +115,24 @@ impl Subscriber {
             }
         }
 
+        println!("Subscriber {} created", stream_id);
         Self {
-            running : running,
+            stop,
             poll_thread,
         }
+
     }
 
     pub fn is_connected(&self) -> bool {
         true
     }
-    pub fn subscribe(&mut self) -> anyhow::Result<()> {
+    pub fn subscribe(&self) -> anyhow::Result<()> {
         println!("Subscribing to Aeron");
-
         Ok(())
     }
 
-    pub fn release(&mut self) -> anyhow::Result<()> {
+    pub fn release(&self) -> anyhow::Result<()> {
         println!("Unsubscribing from Aeron");
-        self.running.store(false, Ordering::SeqCst);
-        if self.poll_thread.is_some() {
-            match self.poll_thread.take().unwrap().join() {
-                Ok(_) => println!("Poll thread stopped"),
-                Err(e) => bail!("Error stopping poll thread: {:?}", e),
-            }
-        }
         Ok(())
     }
  

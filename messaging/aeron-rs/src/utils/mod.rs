@@ -25,17 +25,19 @@ pub mod types;
 #[macro_export]
 macro_rules! log {
         ($level:ident, $log_message:expr) => {
+            let now = $crate::utils::misc::unix_time_ms_string();
             if let Some(name) = std::thread::current().name() {
-                log::$level!("({}) {}", name, $log_message);
+                log::$level!("[{}] ({}) {}", now, name, $log_message);
             } else {
                 log::$level!(concat!("(NoName) ", $log_message));
             }
         };
         ($level:ident, $log_message:expr, $($args:tt)*) => {
+            let now = $crate::utils::misc::unix_time_ms_string();
             if let Some(name) = std::thread::current().name() {
-                log::$level!(concat!("({}) ", $log_message), name, $($args)*);
+                log::$level!(concat!("([{}] {}) ", $log_message), now,  name, $($args)*);
             } else {
-                log::$level!(concat!("(NoName) ", $log_message), $($args)*);
+                log::$level!(concat!("([{}] NoName) ", $log_message), now, $($args)*);
             }
         };
     }

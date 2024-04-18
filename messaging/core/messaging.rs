@@ -3,6 +3,7 @@ use crate::subscriber::subscriber::Subscriber;
 use crate::{
     base::settings::Settings, requester::requester::Requester, responser::responser::Responser,
 };
+use aeron_rs::concurrent::counters::CountersReader;
 use aeron_rs::{
     aeron::Aeron,
     concurrent::{
@@ -21,6 +22,7 @@ use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use once_cell::sync::Lazy;
+use std::sync::atomic::AtomicBool;
 use std::{
     ffi::CString,
     hash::{self, Hash, Hasher},
@@ -37,7 +39,7 @@ pub struct Messaging {
     pub settings: Option<Settings>,
     pub aeron: Option<Arc<Mutex<Aeron>>>,
     pub publishers: DashMap<i32, Arc<Publisher>>,
-    pub subscribers: DashMap<i32, Subscriber>,
+    pub subscribers: DashMap<i32, Arc<Subscriber>>,
     pub requesters: DashMap<String, Arc<Requester>>,
     pub responsers: DashMap<String, Arc<Responser>>,
 }
@@ -59,12 +61,13 @@ impl Messaging {
         if !settings.dir_prefix.is_empty() {
             ctx.set_aeron_dir(settings.dir_prefix.clone());
         }
-        ctx.set_new_exclusive_publication_handler(Box::new(Self::on_new_publication_handler));
-        ctx.set_new_subscription_handler(Box::new(Self::on_new_subscription_handler));
-        ctx.set_available_image_handler(Box::new(Self::available_image_handler));
-        ctx.set_unavailable_image_handler(Box::new(Self::unavailable_image_handler));
+        //ctx.set_new_exclusive_publication_handler(Box::new(Self::on_new_publication_handler));
+        //ctx.set_new_subscription_handler(Box::new(Self::on_new_subscription_handler));
+        //ctx.set_available_image_handler(Box::new(Self::available_image_handler));
+        //ctx.set_unavailable_image_handler(Box::new(Self::unavailable_image_handler));
         ctx.set_error_handler(Box::new(Self::error_handler));
         ctx.set_pre_touch_mapped_memory(true);
+        //ctx.set_unavailable_counter_handler(Box::new(Self::unavailable_counter_handler));
 
         let aeron = Aeron::new(ctx);
         if aeron.is_err() {
@@ -74,7 +77,6 @@ impl Messaging {
         self.settings = Some(settings.clone());
         self.aeron = Some(Arc::new(Mutex::new(aeron.unwrap())));
 
-        print!("Aeron instance is closed");
         Ok(())
     }
 
@@ -135,19 +137,20 @@ impl Messaging {
         Ok(())
     }
 
-    pub fn subscribe(&mut self, topic : &str, sender: Sender<Vec<u8>>) -> anyhow::Result<()> {
+    pub fn subscribe(&mut self, topic : &str, sender: Sender<Vec<u8>>, stop : Arc<AtomicBool>) -> anyhow::Result<()> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
 
         let stream_id = Self::hash_stream_id(topic);
 
-        let mut s = Subscriber::new(
+        let s = Arc::new( Subscriber::new(
             self.aeron.as_ref().unwrap().clone(),
             self.settings.as_ref().unwrap().channel.as_str(),
             stream_id,
             sender,
-        );
+            stop,
+        ));
         s.subscribe();
         self.subscribers.insert(stream_id, s);
         Ok(())
@@ -174,7 +177,7 @@ impl Messaging {
         Ok(())
     }
 
-    pub fn new_requester(&mut self, topic: &str, sender: Sender<Vec<u8>>) -> anyhow::Result<Arc<Requester>> {
+    pub fn new_requester(&mut self, topic: &str, sender: Sender<Vec<u8>>, stop : Arc<AtomicBool>) -> anyhow::Result<Arc<Requester>> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
@@ -188,6 +191,7 @@ impl Messaging {
             pub_stream_id,
             sub_stream_id,
             sender,
+            stop,
         ));
 
         self.requesters.insert(topic.to_owned(), s.clone());
@@ -195,7 +199,7 @@ impl Messaging {
         Ok(s.clone())
     }
 
-    pub fn new_responser(&mut self, topic: &str, sender: Sender<Vec<u8>>) -> anyhow::Result<Arc<Responser>> {
+    pub fn new_responser(&mut self, topic: &str, sender: Sender<Vec<u8>>, stop : Arc<AtomicBool>) -> anyhow::Result<Arc<Responser>> {
         if self.settings.is_none() || self.aeron.is_none() {
             bail!("Please call connect first!")
         }
@@ -203,12 +207,13 @@ impl Messaging {
         let pub_stream_id = Self::hash_stream_id(format!("{}_{}", topic, "requester").as_str());
         let sub_stream_id = Self::hash_stream_id(format!("{}_{}", topic, "responser").as_str());
 
-        let mut s = Arc::new(Responser::new(
+        let s = Arc::new(Responser::new(
             self.aeron.as_ref().unwrap().clone(),
             self.settings.as_ref().unwrap().channel.as_str(),
             sub_stream_id,
             pub_stream_id,
             sender,
+            stop,
         ));
 
         self.responsers.insert(topic.to_owned(), s.clone());
@@ -216,10 +221,38 @@ impl Messaging {
         Ok(s.clone())
     }
 
+    pub fn release(&mut self) {
+        if self.settings.is_none() || self.aeron.is_none() {
+            eprintln!("Please call connect first!")
+        }
+
+        self.publishers.iter_mut().for_each(|p| {
+            p.value().release();
+        });
+
+        self.subscribers.iter_mut().for_each(|s| {
+            s.value().release();
+        });
+
+        self.requesters.iter_mut().for_each(|r| {
+            r.value().release();
+        });
+
+        self.responsers.iter_mut().for_each(|r| {
+            r.value().release();
+        });
+
+        self.publishers.clear();
+        self.subscribers.clear();
+        self.requesters.clear();
+        self.responsers.clear();
+    }
+
     fn hash_stream_id(topic: &str) -> i32 {
         let mut state = DefaultHasher::new();
         topic.hash(&mut state) ;
-        state.finish() as i32
+        static MAX_ID: u64  = 100_000_000;
+        ( state.finish() % MAX_ID) as i32
     }
 
     pub fn on_new_publication_handler(
@@ -266,6 +299,16 @@ impl Messaging {
         );
     }
 
+    pub fn unavailable_counter_handler(counters_reader: &CountersReader, registration_id: i64, counter_id: i32) {
+        println!(
+            "unavailable_counter_handler: counter deallocated with registration_id {}, counter_id {}, label {}, value {}",
+            registration_id,
+            counter_id,
+            counters_reader.counter_label(counter_id).unwrap().to_str().unwrap(),
+            counters_reader.counter_value(counter_id).unwrap()
+        );
+    }
+
     fn error_handler(error: AeronError) {
         println!("Error: {:?}", error);
     }
@@ -273,13 +316,6 @@ impl Messaging {
 
 impl Drop for Messaging {
     fn drop(&mut self) {
-        if self.settings.is_none() || self.aeron.is_none() {
-            eprintln!("Please call connect first!")
-        }
-
-        self.publishers.clear();
-        self.subscribers.clear();
-        self.requesters.clear();
-        self.responsers.clear();
+        self.release();
     }
 }

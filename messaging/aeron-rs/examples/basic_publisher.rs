@@ -28,11 +28,12 @@ use aeron_rs::{
         status::status_indicator_reader::channel_status_to_str,
     },
     context::Context,
-    example_config::{DEFAULT_CHANNEL, DEFAULT_STREAM_ID},
+    example_config::{DEFAULT_CHANNEL, DEFAULT_STREAM_ID, DEFAULT_FRAGMENT_COUNT_LIMIT, DEFAULT_LINGER_TIMEOUT_MS, DEFAULT_NUMBER_OF_MESSAGES, DEFAULT_MESSAGE_LENGTH},
     utils::errors::AeronError,
 };
 use lazy_static::lazy_static;
 use nix::NixPath;
+use structopt::StructOpt;
 
 lazy_static! {
     pub static ref RUNNING: AtomicBool = AtomicBool::from(true);
@@ -63,9 +64,32 @@ impl Settings {
     }
 }
 
-fn parse_cmd_line() -> Settings {
-    Settings::new()
+
+#[derive(StructOpt, Clone, Debug)]
+#[structopt(name = "Aeron  subscriber" )]
+struct CmdOpts {
+    #[structopt(short = "p", long = "dir", default_value = "", help = "Prefix directory for aeron driver")]
+    dir_prefix: String,
+    #[structopt(short = "c", long = "channel", default_value = DEFAULT_CHANNEL, help = "Channel")]
+    channel: String,
+    #[structopt(short = "s", long = "stream", default_value = DEFAULT_STREAM_ID, help = "Stream ID")]
+    stream_id: i32,
+    #[structopt(short = "m", long, default_value = DEFAULT_NUMBER_OF_MESSAGES, help = "Number of messages")]
+    number_of_messages: i64,
+    #[structopt(short = "L", long, default_value = DEFAULT_MESSAGE_LENGTH, help = "Message length")]
+    message_length: i32,
+    #[structopt(short = "l", long, default_value = DEFAULT_LINGER_TIMEOUT_MS, help = "Linger timeout")]
+    linger_timeout_ms: u64,
+    #[structopt(short = "f", long, default_value = DEFAULT_FRAGMENT_COUNT_LIMIT, help = "Fragment Count Limit")]
+    fragment_count_limit: i32,
+    #[structopt(short = "P", long, help = "Show publication progress")]
+    progress: bool,
 }
+
+fn parse_cmd_line() -> CmdOpts {
+    CmdOpts::from_args()
+}
+
 
 fn error_handler(error: AeronError) {
     println!("Error: {:?}", error);

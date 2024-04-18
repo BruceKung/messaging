@@ -34,6 +34,7 @@ use crate::{
         ring_buffer::ManyToOneRingBuffer,
         strategies::SleepingIdleStrategy,
     },
+    log,
     context::{Context, OnAvailableCounter, OnAvailableImage, OnCloseClient, OnUnavailableCounter, OnUnavailableImage},
     counter::Counter,
     driver_proxy::DriverProxy,
@@ -129,7 +130,6 @@ impl Aeron {
         );
 
         let use_agent_invoker = context.use_conductor_agent_invoker();
-
         let mut aeronchik = Self {
             session_id_distribution: Uniform::from(std::i32::MIN..std::i32::MAX),
             context: context.clone(),

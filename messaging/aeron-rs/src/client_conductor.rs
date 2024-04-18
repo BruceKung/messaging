@@ -539,6 +539,7 @@ impl ClientConductor {
     ) -> Result<Arc<LogBuffers>, AeronError> {
         if let Some(lb) = self.log_buffers_by_registration_id.get_mut(&registration_id) {
             lb.time_of_last_state_change_ms = MAX_MOMENT;
+
             Ok(lb.log_buffers.clone())
         } else {
             let touch = self.pre_touch_mapped_memory && !channel.to_string_lossy().contains("sparse=true");
@@ -612,7 +613,7 @@ impl ClientConductor {
             .lock()
             .expect("Failed to obtain admin_lock in find_publication");
             */
-        log!(trace, "find_publication: with registration_id {}", registration_id);
+        //log!(trace, "find_publication: with registration_id {}", registration_id);
 
         self.ensure_not_reentrant();
         self.ensure_open()?;
@@ -914,7 +915,7 @@ impl ClientConductor {
     }
 
     pub fn find_subscription(&mut self, registration_id: i64) -> Result<Arc<Mutex<Subscription>>, AeronError> {
-        log!(trace, "find_subscription: with registration_id {}", registration_id);
+        //log!(trace, "find_subscription: with registration_id {}", registration_id);
 
         self.ensure_not_reentrant();
         self.ensure_open()?;

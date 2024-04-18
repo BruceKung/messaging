@@ -8,4 +8,4 @@ services:
       - /dev/shm:/dev/shm
     environment:
       - LD_LIBRARY_PATH=/root/aeron/lib/:${LD_LIBRARY_PATH}
-    command: /root/aeron/bin/aeronmd -DAERON_DIR=/dev/shm/aeron/
+    command: /root/aeron/bin/aeronmd -DAERON_DIR=/dev/shm/aeron/  -DAERON_PRINT_CONFIGURATION=true  -DAERON_EVENT_LOG=0xFFFF -DAERON_EVENT_LOG=all
