@@ -1471,14 +1471,14 @@ impl Agent for ClientConductor {
     }
 
     fn do_work(&mut self) -> Result<i32, AeronError> {
-        log!(trace, "do_work: started")
+        log!(trace, "do_work: started");
         let mut work_count = 0;
 
         let dla = self.driver_listener_adapter.take().unwrap();
         work_count += dla.receive_messages(self)?;
         self.driver_listener_adapter.replace(dla);
         work_count += self.on_heartbeat_check_timeouts() as usize;
-        log!(trace, "do_work: exiting")
+        log!(trace, "do_work: exiting");
         Ok(work_count as i32)
     }
 
