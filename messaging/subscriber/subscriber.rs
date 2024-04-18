@@ -13,13 +13,13 @@ use aeron_rs::{
         atomic_buffer::{AlignedBuffer, AtomicBuffer},
         logbuffer::header::Header,
         status::status_indicator_reader::channel_status_to_str,
-        strategies::{BusySpinIdleStrategy,BackOffIdleStrategy,SleepingIdleStrategy, Strategy},
+        strategies::{BackOffIdleStrategy, BusySpinIdleStrategy, SleepingIdleStrategy, Strategy},
     },
     context::Context,
     fragment_assembler::{Fragment, FragmentAssembler},
     image::Image,
     subscription::{self, Subscription},
-    utils::{errors::AeronError, types::Index},
+    utils::{errors::{AeronError, GenericError}, types::Index},
 };
 use anyhow::{bail, Result};
 use crossbeam::channel::Sender;
@@ -45,11 +45,16 @@ impl Subscriber {
                 "Adding subscription to Aeron with channel {} and stream id {}",
                 channel, stream_id
             );
-            let subscription_id = aeron.lock().unwrap()
+
+            let mut subscription_id = 0;
+            
+            {
+                subscription_id = aeron.lock().unwrap()
                 .add_subscription(str_to_c(channel), stream_id)
                 .expect("Could not add subscription");
+            } 
 
-            let mut sub = aeron.lock().unwrap().find_subscription(subscription_id);
+            let mut sub : Result<Arc<Mutex<Subscription>>, AeronError> = Err(GenericError::SubscriptionNotFound.into());
             loop {
                 if sub.is_ok() {
                     break;
