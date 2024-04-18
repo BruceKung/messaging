@@ -59,6 +59,7 @@ impl Subscriber {
                 if sub.is_ok() {
                     break;
                 }          
+                println!("Subscription channel {} stream {} is not found", channel, stream_id);
                 sub = aeron.lock().unwrap().find_subscription(subscription_id);
             }
 
