@@ -625,7 +625,7 @@ impl ClientConductor {
             .lock()
             .expect("Failed to obtain admin_lock in find_publication");
             */
-        log!(trace, "find_publication: with registration_id {}", registration_id);
+        //log!(trace, "find_publication: with registration_id {}", registration_id);
 
         self.ensure_not_reentrant();
         self.ensure_open()?;
