@@ -1471,12 +1471,14 @@ impl Agent for ClientConductor {
     }
 
     fn do_work(&mut self) -> Result<i32, AeronError> {
+        log!(trace, "do_work: started")
         let mut work_count = 0;
 
         let dla = self.driver_listener_adapter.take().unwrap();
         work_count += dla.receive_messages(self)?;
         self.driver_listener_adapter.replace(dla);
         work_count += self.on_heartbeat_check_timeouts() as usize;
+        log!(trace, "do_work: exiting")
         Ok(work_count as i32)
     }
 
@@ -1624,6 +1626,13 @@ impl DriverListener for ClientConductor {
             let _callback_guard = CallbackGuard::new(&mut self.is_in_callback);
             self.on_new_subscription_handler
                 .call(state.channel.clone(), state.stream_id, registration_id);
+
+            log!(
+                trace,
+                "on_subscription_ready exit: registration_id {}, channel_status_id {}",
+                registration_id,
+                channel_status_id
+            );
         }
     }
 

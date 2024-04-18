@@ -129,7 +129,7 @@ impl Aeron {
         );
 
         let use_agent_invoker = context.use_conductor_agent_invoker();
-
+        println!("use_agent_invoker: {}", use_agent_invoker);
         let mut aeronchik = Self {
             session_id_distribution: Uniform::from(std::i32::MIN..std::i32::MAX),
             context: context.clone(),
