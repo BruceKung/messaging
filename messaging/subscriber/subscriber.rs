@@ -13,7 +13,7 @@ use aeron_rs::{
         atomic_buffer::{AlignedBuffer, AtomicBuffer},
         logbuffer::header::Header,
         status::status_indicator_reader::channel_status_to_str,
-        strategies::{BackOffIdleStrategy, BusySpinIdleStrategy, SleepingIdleStrategy, Strategy},
+        strategies::{BackOffIdleStrategy, BusySpinIdleStrategy,YieldingIdleStrategy, SleepingIdleStrategy, Strategy},
     },
     context::Context,
     fragment_assembler::{Fragment, FragmentAssembler},
@@ -68,7 +68,7 @@ impl Subscriber {
             subscription = sub.unwrap();
         }
 
-        let poll_idle_strategy = SleepingIdleStrategy::new(1);
+        let poll_idle_strategy = YieldingIdleStrategy{};
         let mut poll_thread = Arc::new(None);
         {
             let subscription = subscription.clone();
