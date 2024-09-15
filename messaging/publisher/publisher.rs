@@ -42,7 +42,6 @@ impl Publisher {
     }
 
     pub fn publish(&self, data: &[u8], len: i32) -> anyhow::Result<()> {
-        println!("Publishing to Aeron, len: {}", len);
 
         let buffer = AlignedBuffer::with_capacity(len);
         let src_buffer = AtomicBuffer::from_aligned(&buffer);

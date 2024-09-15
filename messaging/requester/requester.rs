@@ -57,7 +57,6 @@ impl Requester {
     }
     
     pub fn send(&self, data: &[u8], len: i32) -> anyhow::Result<()> {
-        println!("Publishing to Aeron");
         self.publisher.clone().publish(data, len)
     }
 

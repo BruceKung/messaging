@@ -81,14 +81,6 @@ impl Subscriber {
                     unsafe {
                         let slice_msg =
                             slice::from_raw_parts_mut(buffer.buffer().offset(offset as isize), length as usize);
-                        //let msg = CString::new(slice_msg).unwrap();
-                        println!(
-                            "Message to stream {} from session {} ({}@{})",
-                            header.stream_id(),
-                            header.session_id(),
-                            length,
-                            offset,
-                        );
             
                         match sender.send(slice_msg.to_vec()) {
                             Ok(_) => {}, //println!("Message sent"),
