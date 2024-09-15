@@ -68,7 +68,7 @@ impl Subscriber {
             subscription = sub.unwrap();
         }
 
-        let poll_idle_strategy = YieldingIdleStrategy{};
+        let poll_idle_strategy = SleepingIdleStrategy::new(1);
         let mut poll_thread = Arc::new(None);
         {
             let subscription = subscription.clone();
