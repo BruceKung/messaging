@@ -158,7 +158,8 @@ impl AtomicBuffer {
     #[inline]
     pub fn set_memory(&self, position: Index, len: Index, value: u8) {
         self.bounds_check(position, len);
-        let s = unsafe { slice::from_raw_parts_mut(self.ptr.offset(position as isize), len as usize) };
+        let s =
+            unsafe { slice::from_raw_parts_mut(self.ptr.offset(position as isize), len as usize) };
 
         // poor man's memcp
         for i in s {
@@ -262,7 +263,13 @@ impl AtomicBuffer {
     /// src_offset - offset in src_buffer to start coping from
     /// length - number of bytes to copy
     #[inline]
-    pub fn copy_from(&self, offset: Index, src_buffer: &AtomicBuffer, src_offset: Index, length: Index) {
+    pub fn copy_from(
+        &self,
+        offset: Index,
+        src_buffer: &AtomicBuffer,
+        src_offset: Index,
+        length: Index,
+    ) {
         self.bounds_check(offset, length);
         src_buffer.bounds_check(src_offset, length);
         unsafe {
@@ -301,7 +308,8 @@ impl AtomicBuffer {
 
         unsafe {
             // NOTE: we need to add trailing zero after the "length" bytes read from the buffer
-            let str_slice = std::slice::from_raw_parts(self.at(offset) as *const u8, length as usize);
+            let str_slice =
+                std::slice::from_raw_parts(self.at(offset) as *const u8, length as usize);
             let mut zero_terminated: Vec<u8> = Vec::with_capacity(length as usize + 1);
             zero_terminated.extend_from_slice(str_slice);
             zero_terminated.push(0);
@@ -373,7 +381,10 @@ mod tests {
         let atomic_buffer = AtomicBuffer::from_aligned(&src);
 
         //assert zeroed
-        assert_eq!(atomic_buffer.as_slice(), &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,])
+        assert_eq!(
+            atomic_buffer.as_slice(),
+            &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+        )
     }
 
     #[test]

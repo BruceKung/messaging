@@ -19,7 +19,9 @@ use std::ffi::CString;
 use lazy_static::lazy_static;
 
 use crate::{
-    concurrent::{atomic_buffer::AtomicBuffer, reports::loss_report_descriptor::LossReportEntryDefn},
+    concurrent::{
+        atomic_buffer::AtomicBuffer, reports::loss_report_descriptor::LossReportEntryDefn,
+    },
     utils::{
         bit_utils,
         misc::CACHE_LINE_LENGTH,
@@ -86,11 +88,13 @@ pub mod loss_report_descriptor {
 }
 
 lazy_static! {
-    pub static ref OBSERVATION_COUNT_OFFSET: Index = offset_of!(LossReportEntryDefn, observation_count) as Index;
+    pub static ref OBSERVATION_COUNT_OFFSET: Index =
+        offset_of!(LossReportEntryDefn, observation_count) as Index;
     pub static ref ENTRY_ALIGNMENT: Index = std::mem::size_of_val(&CACHE_LINE_LENGTH) as Index;
 }
 
-pub type LossConsumerHandler = fn(i64, LossReportEntryDefn, CString /*channel*/, CString /*source*/);
+pub type LossConsumerHandler =
+    fn(i64, LossReportEntryDefn, CString /*channel*/, CString /*source*/);
 
 /**
  * Read a LossReport contained in the buffer. This can be done concurrently.
@@ -116,14 +120,17 @@ pub fn read(buffer: &AtomicBuffer, consumer: LossConsumerHandler) -> i32 {
 
         let channel = buffer.get_string(offset + loss_report_descriptor::CHANNEL_OFFSET);
         let channel_length = channel.as_bytes().len() as Index;
-        let source = buffer.get_string(offset + loss_report_descriptor::CHANNEL_OFFSET + I32_SIZE + channel_length);
+        let source = buffer.get_string(
+            offset + loss_report_descriptor::CHANNEL_OFFSET + I32_SIZE + channel_length,
+        );
         let source_length = source.as_bytes().len() as Index;
 
         let record = buffer.get::<loss_report_descriptor::LossReportEntryDefn>(offset);
 
         consumer(observation_count, record, channel, source);
 
-        let record_length = loss_report_descriptor::CHANNEL_OFFSET + I32_SIZE * 2 + channel_length + source_length;
+        let record_length =
+            loss_report_descriptor::CHANNEL_OFFSET + I32_SIZE * 2 + channel_length + source_length;
 
         offset += bit_utils::align(record_length, *ENTRY_ALIGNMENT);
     }

@@ -64,22 +64,26 @@ pub const MAX_MESSAGE_LENGTH: Index = 16 * 1024 * 1024;
 
 pub fn check_header_length(length: Index) -> Result<(), AeronError> {
     if length != data_frame_header::LENGTH {
-        return Err(IllegalStateError::FrameHeaderLengthMustBeEqualToDataOffset {
-            length,
-            data_offset: data_frame_header::LENGTH,
-        }
-        .into());
+        return Err(
+            IllegalStateError::FrameHeaderLengthMustBeEqualToDataOffset {
+                length,
+                data_offset: data_frame_header::LENGTH,
+            }
+            .into(),
+        );
     }
     Ok(())
 }
 
 pub fn check_max_frame_length(length: Index) -> Result<(), AeronError> {
     if (length & (FRAME_ALIGNMENT - 1)) != 0 {
-        return Err(IllegalStateError::MaxFrameLengthMustBeMultipleOfFrameAlignment {
-            length,
-            frame_alignment: FRAME_ALIGNMENT,
-        }
-        .into());
+        return Err(
+            IllegalStateError::MaxFrameLengthMustBeMultipleOfFrameAlignment {
+                length,
+                frame_alignment: FRAME_ALIGNMENT,
+            }
+            .into(),
+        );
     }
     Ok(())
 }
@@ -128,7 +132,11 @@ pub fn frame_length_volatile(log_buffer: &AtomicBuffer, frame_offset: Index) -> 
     log_buffer.get_volatile::<i32>(length_offset(frame_offset))
 }
 
-pub fn set_frame_length_ordered(log_buffer: &AtomicBuffer, frame_offset: Index, frame_length: Index) {
+pub fn set_frame_length_ordered(
+    log_buffer: &AtomicBuffer,
+    frame_offset: Index,
+    frame_length: Index,
+) {
     log_buffer.put_ordered::<i32>(length_offset(frame_offset), frame_length);
 }
 

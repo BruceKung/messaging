@@ -93,17 +93,29 @@ pub enum IllegalStateError {
     #[error("Page size is not a power of 2, length= {0}")]
     PageSizeIsNotPowerOfTwo(i32),
     #[error("Page size is greater than max size of {page_max_size}, size= {page_size}")]
-    PageSizeGreaterThanMaxPossibleSize { page_size: i32, page_max_size: Index },
+    PageSizeGreaterThanMaxPossibleSize {
+        page_size: i32,
+        page_max_size: Index,
+    },
     #[error("Page size is less than min size of {page_min_size}, size= {page_size}")]
-    PageSizeLessThanMinPossibleSize { page_size: i32, page_min_size: Index },
+    PageSizeLessThanMinPossibleSize {
+        page_size: i32,
+        page_min_size: Index,
+    },
     #[error("Publication is closed")]
     PublicationClosed,
     #[error("Subscription is closed")]
     SubscriptionClosed,
     #[error("Term length is greater than max size of {term_max_length} , length= {term_length}")]
-    TermLengthIsGreaterThanMaxPossibleSize { term_length: i32, term_max_length: Index },
+    TermLengthIsGreaterThanMaxPossibleSize {
+        term_length: i32,
+        term_max_length: Index,
+    },
     #[error("Term length is less than min size of {term_min_length} , length= {term_length}")]
-    TermLengthIsLessThanMinPossibleSize { term_length: i32, term_min_length: Index },
+    TermLengthIsLessThanMinPossibleSize {
+        term_length: i32,
+        term_min_length: Index,
+    },
     #[error("Term length is not a power of 2, length= {0}")]
     TermLengthIsNotPowerOfTwo(i32),
 }
@@ -134,7 +146,9 @@ pub enum IllegalArgumentError {
     AllocateLabelCanNotBeConverted,
     #[error("Allocate: label is too long")]
     AllocateLabelTooLong,
-    #[error("{filename}:{line}: counter id {counter_id} out of range: max_counter_id={max_counter_id}")]
+    #[error(
+        "{filename}:{line}: counter id {counter_id} out of range: max_counter_id={max_counter_id}"
+    )]
     CounterIdOutOfRange {
         filename: String,
         line: u32,
@@ -142,9 +156,15 @@ pub enum IllegalArgumentError {
         max_counter_id: i32,
     },
     #[error("Encoded message exceeds max_message_length of {max_message_length}, length={length}")]
-    EncodedMessageExceedsMaxMessageLength { length: i32, max_message_length: i32 },
+    EncodedMessageExceedsMaxMessageLength {
+        length: i32,
+        max_message_length: i32,
+    },
     #[error("Encoded message exceeds max_payload_length of {max_payload_length}, length={length}")]
-    EncodedMessageExceedsMaxPayloadLength { length: i32, max_payload_length: i32 },
+    EncodedMessageExceedsMaxPayloadLength {
+        length: i32,
+        max_payload_length: i32,
+    },
     #[error("Invalid control mode: {0}")]
     InvalidControlMode(String),
     #[error("Invalid media: {0}")]
@@ -160,11 +180,18 @@ pub enum IllegalArgumentError {
     #[error("Linger value cannot be negative: {0}")]
     LingerValueCannotBeNegative(i64),
     #[error("MTU is not in range {left_bound}-{right_bound}: {0}")]
-    MtuIsNotInRange { mtu: u32, left_bound: i32, right_bound: i32 },
+    MtuIsNotInRange {
+        mtu: u32,
+        left_bound: i32,
+        right_bound: i32,
+    },
     #[error("MTU not a multiple of FRAME_ALIGNMENT= {frame_alignment}: mtu= {mtu}")]
     MtuNotMultipleOfFrameAlignment { mtu: u32, frame_alignment: Index },
     #[error("New_position {new_position} is not aligned to FRAME_ALIGNMENT= {frame_alignment}")]
-    NewPositionNotAlignedToFrameAlignment { new_position: i64, frame_alignment: Index },
+    NewPositionNotAlignedToFrameAlignment {
+        new_position: i64,
+        frame_alignment: Index,
+    },
     #[error("New position {new_position} is out of range {left_bound} - {right_bound}")]
     NewPositionOutOfRange {
         new_position: i64,
@@ -176,7 +203,10 @@ pub enum IllegalArgumentError {
     #[error("Term offset is not in range 0-1g: {0}")]
     TermOffsetNotInRange(u32),
     #[error("Term offset is not a multiple of FRAME_ALIGNMENT= {frame_alignment}: offset= {term_offset}")]
-    TermOffsetNotMultipleOfFrameAlignment { term_offset: u32, frame_alignment: Index },
+    TermOffsetNotMultipleOfFrameAlignment {
+        term_offset: u32,
+        frame_alignment: Index,
+    },
     #[error("Unable to allocate counter, metadata buffer is full")]
     UnableAllocateCounterBecauseMetadataBufferFull,
     #[error("Unable to allocate counter, values buffer is full")]
@@ -200,7 +230,10 @@ pub enum GenericError {
     #[error("Client heartbeat timestamp not active")]
     ClientHeartbeatNotActive,
     #[error("Aeron CnC version does not match:  app={app_version} file={file_version}")]
-    CncVersionDoesntMatch { app_version: String, file_version: String },
+    CncVersionDoesntMatch {
+        app_version: String,
+        file_version: String,
+    },
     #[error("Counter already dropped")]
     CounterAlreadyDropped,
     #[error("Counter not ready yet, status {status:?}")]

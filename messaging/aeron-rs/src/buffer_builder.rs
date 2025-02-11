@@ -104,7 +104,10 @@ impl BufferBuilder {
         Ok(self)
     }
 
-    fn find_suitable_capacity(current_capacity: Index, required_capacity: Index) -> Result<Index, AeronError> {
+    fn find_suitable_capacity(
+        current_capacity: Index,
+        required_capacity: Index,
+    ) -> Result<Index, AeronError> {
         let mut capacity = current_capacity;
 
         loop {
@@ -112,7 +115,9 @@ impl BufferBuilder {
 
             if new_capacity < capacity || new_capacity > BUFFER_BUILDER_MAX_CAPACITY {
                 if capacity == BUFFER_BUILDER_MAX_CAPACITY {
-                    return Err(IllegalStateError::MaxCapacityReached(BUFFER_BUILDER_MAX_CAPACITY).into());
+                    return Err(
+                        IllegalStateError::MaxCapacityReached(BUFFER_BUILDER_MAX_CAPACITY).into(),
+                    );
                 }
 
                 capacity = BUFFER_BUILDER_MAX_CAPACITY;
@@ -133,7 +138,8 @@ impl BufferBuilder {
         let required_capacity = self.limit + additional_capacity;
 
         if required_capacity > self.capacity {
-            let new_capacity = BufferBuilder::find_suitable_capacity(self.capacity, required_capacity)?;
+            let new_capacity =
+                BufferBuilder::find_suitable_capacity(self.capacity, required_capacity)?;
             let new_buffer = alloc_buffer_aligned(new_capacity);
 
             unsafe {

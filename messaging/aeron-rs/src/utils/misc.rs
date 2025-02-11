@@ -28,7 +28,9 @@ pub const CACHE_LINE_LENGTH: Index = CACHE_LINE_SIZE as Index;
 /// Get system time since start of UNIX epoch in milliseconds (ms) (10^-3 sec)
 pub fn unix_time_ms() -> Moment {
     let start = SystemTime::now();
-    let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Can't get UNIX epoch.");
+    let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Can't get UNIX epoch.");
 
     since_the_epoch.as_secs() * 1000 + since_the_epoch.subsec_nanos() as u64 / 1_000_000
 }
@@ -36,7 +38,9 @@ pub fn unix_time_ms() -> Moment {
 /// Get system time since start of UNIX epoch in nanoseconds (ns) (10^-9 sec)
 pub fn unix_time_ns() -> Moment {
     let start = SystemTime::now();
-    let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Can't get UNIX epoch.");
+    let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Can't get UNIX epoch.");
 
     since_the_epoch.as_secs() * 1_000_000_000 + since_the_epoch.subsec_nanos() as u64
 }
@@ -44,7 +48,9 @@ pub fn unix_time_ns() -> Moment {
 pub fn unix_time_ms_string() -> String {
     let milliseconds_since_epoch = unix_time_ms();
     // yyyy-MM-dd HH:mm:ss.SSSZ
-    let time = Local.timestamp_millis_opt(milliseconds_since_epoch as i64).unwrap();
+    let time = Local
+        .timestamp_millis_opt(milliseconds_since_epoch as i64)
+        .unwrap();
     time.to_string()
 }
 
@@ -114,7 +120,9 @@ pub struct CallbackGuard<'a> {
 }
 impl<'a> CallbackGuard<'a> {
     pub fn new(flag: &'a mut bool) -> Self {
-        let selfy = Self { is_in_callback: flag };
+        let selfy = Self {
+            is_in_callback: flag,
+        };
         *selfy.is_in_callback = true;
         selfy
     }

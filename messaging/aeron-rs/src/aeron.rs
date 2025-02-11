@@ -29,16 +29,21 @@ use crate::{
         agent_invoker::AgentInvoker,
         agent_runner::{AgentRunner, AgentStopper},
         atomic_buffer::AtomicBuffer,
-        broadcast::{broadcast_receiver::BroadcastReceiver, copy_broadcast_receiver::CopyBroadcastReceiver},
+        broadcast::{
+            broadcast_receiver::BroadcastReceiver, copy_broadcast_receiver::CopyBroadcastReceiver,
+        },
         counters::CountersReader,
         ring_buffer::ManyToOneRingBuffer,
         strategies::SleepingIdleStrategy,
     },
-    log,
-    context::{Context, OnAvailableCounter, OnAvailableImage, OnCloseClient, OnUnavailableCounter, OnUnavailableImage},
+    context::{
+        Context, OnAvailableCounter, OnAvailableImage, OnCloseClient, OnUnavailableCounter,
+        OnUnavailableImage,
+    },
     counter::Counter,
     driver_proxy::DriverProxy,
     exclusive_publication::ExclusivePublication,
+    log,
     publication::Publication,
     subscription::Subscription,
     utils::{
@@ -99,11 +104,17 @@ impl Aeron {
         // Most of Aeron internal field will be represented as Arc's to avoid self referencing.
         let cnc_buf = Self::map_cnc_file(&context)?;
         let local_to_driver_atomic_buffer = cnc_file_descriptor::create_to_driver_buffer(&cnc_buf);
-        let local_to_clients_atomic_buffer = cnc_file_descriptor::create_to_clients_buffer(&cnc_buf);
-        let local_counters_metadata_buffer = cnc_file_descriptor::create_counter_metadata_buffer(&cnc_buf);
-        let local_counters_value_buffer = cnc_file_descriptor::create_counter_values_buffer(&cnc_buf);
-        let local_to_driver_ring_buffer = Arc::new(ManyToOneRingBuffer::new(local_to_driver_atomic_buffer)?);
-        let local_to_clients_broadcast_receiver = Arc::new(Mutex::new(BroadcastReceiver::new(local_to_clients_atomic_buffer)?));
+        let local_to_clients_atomic_buffer =
+            cnc_file_descriptor::create_to_clients_buffer(&cnc_buf);
+        let local_counters_metadata_buffer =
+            cnc_file_descriptor::create_counter_metadata_buffer(&cnc_buf);
+        let local_counters_value_buffer =
+            cnc_file_descriptor::create_counter_values_buffer(&cnc_buf);
+        let local_to_driver_ring_buffer =
+            Arc::new(ManyToOneRingBuffer::new(local_to_driver_atomic_buffer)?);
+        let local_to_clients_broadcast_receiver = Arc::new(Mutex::new(BroadcastReceiver::new(
+            local_to_clients_atomic_buffer,
+        )?));
         let local_driver_proxy = Arc::new(DriverProxy::new(local_to_driver_ring_buffer.clone()));
         let local_idle_strategy = Arc::new(SleepingIdleStrategy::new(IDLE_SLEEP_MS));
         let local_copy_broadcast_receiver = Arc::new(Mutex::new(CopyBroadcastReceiver::new(
@@ -141,7 +152,9 @@ impl Aeron {
             to_driver_ring_buffer: local_to_driver_ring_buffer,
             driver_proxy: local_driver_proxy,
             to_clients_broadcast_receiver: local_to_clients_broadcast_receiver.clone(),
-            to_clients_copy_receiver: CopyBroadcastReceiver::new(local_to_clients_broadcast_receiver),
+            to_clients_copy_receiver: CopyBroadcastReceiver::new(
+                local_to_clients_broadcast_receiver,
+            ),
             conductor: local_conductor.clone(),
             idle_strategy: local_idle_strategy.clone(),
             conductor_stopper: None,
@@ -230,7 +243,10 @@ impl Aeron {
      * @param registration_id of the Publication returned by Aeron::add_publication
      * @return Publication associated with the registration_id
      */
-    pub fn find_publication(&mut self, registration_id: i64) -> Result<Arc<Mutex<Publication>>, AeronError> {
+    pub fn find_publication(
+        &mut self,
+        registration_id: i64,
+    ) -> Result<Arc<Mutex<Publication>>, AeronError> {
         self.conductor
             .lock()
             .expect("Mutex poisoned")
@@ -244,7 +260,11 @@ impl Aeron {
      * @param stream_id within the channel scope.
      * @return registration id for the publication
      */
-    pub fn add_exclusive_publication(&mut self, channel: CString, stream_id: i32) -> Result<i64, AeronError> {
+    pub fn add_exclusive_publication(
+        &mut self,
+        channel: CString,
+        stream_id: i32,
+    ) -> Result<i64, AeronError> {
         self.conductor
             .lock()
             .expect("Mutex poisoned")
@@ -268,7 +288,10 @@ impl Aeron {
      * @param registration_id of the ExclusivePublication returned by Aeron::add_exclusive_publication
      * @return ExclusivePublication associated with the registration_id
      */
-    pub fn find_exclusive_publication(&mut self, registration_id: i64) -> Result<Arc<Mutex<ExclusivePublication>>, AeronError> {
+    pub fn find_exclusive_publication(
+        &mut self,
+        registration_id: i64,
+    ) -> Result<Arc<Mutex<ExclusivePublication>>, AeronError> {
         self.conductor
             .lock()
             .expect("Mutex poisoned")
@@ -285,13 +308,20 @@ impl Aeron {
      * @param stream_id within the channel scope.
      * @return registration id for the subscription
      */
-    pub fn add_subscription(&mut self, channel: CString, stream_id: i32) -> Result<i64, AeronError> {
-        self.conductor.lock().expect("Mutex poisoned").add_subscription(
-            channel,
-            stream_id,
-            self.context.available_image_handler(),
-            self.context.unavailable_image_handler(),
-        )
+    pub fn add_subscription(
+        &mut self,
+        channel: CString,
+        stream_id: i32,
+    ) -> Result<i64, AeronError> {
+        self.conductor
+            .lock()
+            .expect("Mutex poisoned")
+            .add_subscription(
+                channel,
+                stream_id,
+                self.context.available_image_handler(),
+                self.context.unavailable_image_handler(),
+            )
     }
 
     /**
@@ -312,12 +342,15 @@ impl Aeron {
         on_available_image_handler: Box<dyn OnAvailableImage>,
         on_unavailable_image_handler: Box<dyn OnUnavailableImage>,
     ) -> Result<i64, AeronError> {
-        self.conductor.lock().expect("Mutex poisoned").add_subscription(
-            channel,
-            stream_id,
-            on_available_image_handler,
-            on_unavailable_image_handler,
-        )
+        self.conductor
+            .lock()
+            .expect("Mutex poisoned")
+            .add_subscription(
+                channel,
+                stream_id,
+                on_available_image_handler,
+                on_unavailable_image_handler,
+            )
     }
 
     /**
@@ -337,7 +370,10 @@ impl Aeron {
      * @param registration_id of the Subscription returned by Aeron::add_subscription
      * @return Subscription associated with the registration_id
      */
-    pub fn find_subscription(&mut self, registration_id: i64) -> Result<Arc<Mutex<Subscription>>, AeronError> {
+    pub fn find_subscription(
+        &mut self,
+        registration_id: i64,
+    ) -> Result<Arc<Mutex<Subscription>>, AeronError> {
         self.conductor
             .lock()
             .expect("Mutex poisoned")
@@ -355,7 +391,10 @@ impl Aeron {
      * @return next correlation id that is unique for the Media Driver.
      */
     pub fn next_correlation_id(&self) -> Result<i64, AeronError> {
-        self.conductor.lock().expect("Mutex poisoned").ensure_open()?;
+        self.conductor
+            .lock()
+            .expect("Mutex poisoned")
+            .ensure_open()?;
         Ok(self.to_driver_ring_buffer.next_correlation_id())
     }
 
@@ -368,7 +407,12 @@ impl Aeron {
      * @param label       for the counter.
      * @return registration id for the Counter
      */
-    pub fn add_counter(&mut self, type_id: i32, key_buffer: &[u8], label: &str) -> Result<i64, AeronError> {
+    pub fn add_counter(
+        &mut self,
+        type_id: i32,
+        key_buffer: &[u8],
+        label: &str,
+    ) -> Result<i64, AeronError> {
         self.conductor
             .lock()
             .expect("Mutex poisoned")
@@ -393,7 +437,10 @@ impl Aeron {
      * @return Counter associated with the registration_id
      */
     pub fn find_counter(&mut self, registration_id: i64) -> Result<Arc<Counter>, AeronError> {
-        self.conductor.lock().expect("Mutex poisoned").find_counter(registration_id)
+        self.conductor
+            .lock()
+            .expect("Mutex poisoned")
+            .find_counter(registration_id)
     }
 
     /**
@@ -498,7 +545,10 @@ impl Aeron {
      * @return CountersReader for the Aeron media driver in use.
      */
     pub fn counters_reader(&self) -> Result<Arc<CountersReader>, AeronError> {
-        self.conductor.lock().expect("Mutex poisoned").counters_reader()
+        self.conductor
+            .lock()
+            .expect("Mutex poisoned")
+            .counters_reader()
     }
 
     /**
@@ -559,7 +609,9 @@ impl Aeron {
                 cnc_version = cnc_file_descriptor::cnc_version_volatile(&cnc_buffer);
             }
 
-            if semantic_version_major(cnc_version) != semantic_version_major(cnc_file_descriptor::CNC_VERSION) {
+            if semantic_version_major(cnc_version)
+                != semantic_version_major(cnc_file_descriptor::CNC_VERSION)
+            {
                 return Err(GenericError::CncVersionDoesntMatch {
                     app_version: semantic_version_to_string(cnc_file_descriptor::CNC_VERSION),
                     file_version: semantic_version_to_string(cnc_version),
@@ -568,7 +620,8 @@ impl Aeron {
             }
 
             let to_driver_buffer = cnc_file_descriptor::create_to_driver_buffer(&cnc_buffer);
-            let ring_buffer = ManyToOneRingBuffer::new(to_driver_buffer).expect("Error creating ring_buffer");
+            let ring_buffer =
+                ManyToOneRingBuffer::new(to_driver_buffer).expect("Error creating ring_buffer");
 
             while 0 == ring_buffer.consumer_heartbeat_time() {
                 if unix_time_ms() > start_ms + context.media_driver_timeout() {
@@ -579,7 +632,9 @@ impl Aeron {
             }
 
             let time_ms = unix_time_ms();
-            if (ring_buffer.consumer_heartbeat_time() as Moment) < time_ms - context.media_driver_timeout() {
+            if (ring_buffer.consumer_heartbeat_time() as Moment)
+                < time_ms - context.media_driver_timeout()
+            {
                 if time_ms > start_ms + context.media_driver_timeout() {
                     return Err(DriverInteractionError::NoHeartbeatDetected.into());
                 }

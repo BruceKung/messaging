@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-use crate::command::correlated_message_flyweight::{CorrelatedMessageDefn, CorrelatedMessageFlyweight};
+use crate::command::correlated_message_flyweight::{
+    CorrelatedMessageDefn, CorrelatedMessageFlyweight,
+};
 use crate::concurrent::atomic_buffer::AtomicBuffer;
 use crate::utils::types::Index;
 
@@ -53,7 +55,9 @@ pub(crate) struct RemoveMessageFlyweight {
 impl RemoveMessageFlyweight {
     pub fn new(buffer: AtomicBuffer, offset: Index) -> Self {
         let correlated_message_flyweight = CorrelatedMessageFlyweight::new(buffer, offset);
-        let m_struct = correlated_message_flyweight.flyweight.overlay_struct::<RemoveMessageDefn>(0);
+        let m_struct = correlated_message_flyweight
+            .flyweight
+            .overlay_struct::<RemoveMessageDefn>(0);
         Self {
             correlated_message_flyweight,
             m_struct,

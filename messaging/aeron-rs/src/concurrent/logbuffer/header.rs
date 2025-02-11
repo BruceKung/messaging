@@ -174,7 +174,10 @@ impl Header {
      * @return the current position to which the Image has advanced on reading this message.
      */
     pub fn position(&self) -> i64 {
-        let resulting_offset = align(self.term_offset() + self.frame_length(), frame_descriptor::FRAME_ALIGNMENT);
+        let resulting_offset = align(
+            self.term_offset() + self.frame_length(),
+            frame_descriptor::FRAME_ALIGNMENT,
+        );
         log_buffer_descriptor::compute_position(
             self.term_id(),
             resulting_offset,

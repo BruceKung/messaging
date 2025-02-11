@@ -1,13 +1,18 @@
-use std::{ffi::CString, sync::{atomic::AtomicBool, Arc}, time::UNIX_EPOCH};
-use messaging::core::messaging::Messaging;
+use clap::Parser;
+use crossbeam::channel::{Receiver, Sender};
 use messaging::base::settings::Settings;
+use messaging::core::messaging::Messaging;
 use messaging::publisher::publisher::Publisher;
 use messaging::subscriber::subscriber::Subscriber;
-use crossbeam::channel::{Sender, Receiver};
-use clap::Parser;
 use protobuf::Message;
+use std::{
+    ffi::CString,
+    sync::{atomic::AtomicBool, Arc},
+    time::UNIX_EPOCH,
+};
 
-#[path = "test.rs"] mod test;
+#[path = "test.rs"]
+mod test;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -25,7 +30,7 @@ pub fn main() {
     let args = Args::parse();
     let dir_prefix = args.dir_prefix.unwrap_or("".to_string());
 
-    let setting = Settings{
+    let setting = Settings {
         dir_prefix,
         channel: "aeron:ipc".to_string(),
         stream_id: 1001,
@@ -44,7 +49,7 @@ pub fn main() {
 
     let topic = "test_topic".to_string();
 
-    let (sender, receiver ) = crossbeam::channel::unbounded::<Vec<u8>>();
+    let (sender, receiver) = crossbeam::channel::unbounded::<Vec<u8>>();
 
     match messaging.subscribe(topic.as_str(), sender, stop.clone()) {
         Ok(_) => {}
@@ -56,23 +61,28 @@ pub fn main() {
 
     let mut index = 0;
     let mut start = 0;
-    while let Ok(msg) = receiver.recv() {     
-        // get now timestamp 
+    while let Ok(msg) = receiver.recv() {
+        // get now timestamp
         if start == 0 {
-            start = std::time::SystemTime::now().duration_since(UNIX_EPOCH).expect("failed to get ts").as_nanos();
+            start = std::time::SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("failed to get ts")
+                .as_nanos();
         }
         let _p = test::OrderInfo::parse_from_bytes(msg.as_slice()).unwrap();
 
         index += 1;
 
         if index == args.count.as_ref().unwrap().to_owned() {
-            let now = std::time::SystemTime::now().duration_since(UNIX_EPOCH).expect("failed to get ts").as_nanos();
+            let now = std::time::SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("failed to get ts")
+                .as_nanos();
             let dur = now - start;
-            println!("Received last message {:?} , dur {}",  _p, dur);
+            println!("Received last message {:?} , dur {}", _p, dur);
             index = 0;
-        } 
+        }
     }
 
     println!("Exiting");
-
 }

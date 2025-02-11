@@ -35,7 +35,8 @@ pub(crate) struct OperationSucceededDefn {
     correlation_id: i64,
 }
 
-pub const OPERATION_SUCCEEDED_LENGTH: Index = std::mem::size_of::<OperationSucceededDefn>() as Index;
+pub const OPERATION_SUCCEEDED_LENGTH: Index =
+    std::mem::size_of::<OperationSucceededDefn>() as Index;
 
 pub(crate) struct OperationSucceededFlyweight {
     flyweight: Flyweight<OperationSucceededDefn>,

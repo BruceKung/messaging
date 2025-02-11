@@ -2,14 +2,12 @@ use std::ffi::CString;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-use messaging::core::messaging::Messaging;
 use messaging::base::settings::Settings;
+use messaging::core::messaging::Messaging;
 use messaging::requester::requester::Requester;
 
-
 pub fn main() {
-
-    let setting = Settings{
+    let setting = Settings {
         dir_prefix: "/home/api/rzhao/dev/aeron/install/data".to_string(),
         channel: "aeron:ipc".to_string(),
         stream_id: 1001,
@@ -28,17 +26,17 @@ pub fn main() {
         }
     }
 
-    let (sender, receiver ) = crossbeam::channel::unbounded::<Vec<u8>>();    
+    let (sender, receiver) = crossbeam::channel::unbounded::<Vec<u8>>();
 
     let topic = "test_topic".to_string();
-    let result  = messaging.new_responser( topic.as_str(), sender, stop.clone());
+    let result = messaging.new_responser(topic.as_str(), sender, stop.clone());
     if result.is_err() {
         println!("Error: {:?}", result.err());
         return;
     }
     let responser = result.unwrap();
 
-    let mut index : i32 = 0;
+    let mut index: i32 = 0;
     loop {
         if let Ok(msg) = receiver.recv() {
             let msg = CString::new(msg).unwrap();
@@ -48,8 +46,10 @@ pub fn main() {
         let str_msg = format!("Basic Response msg {}", index);
         let c_str_msg = CString::new(str_msg).unwrap();
 
-        responser.clone().send( c_str_msg.as_bytes(),  c_str_msg.as_bytes().len() as i32) ;
-        
+        responser
+            .clone()
+            .send(c_str_msg.as_bytes(), c_str_msg.as_bytes().len() as i32);
+
         std::thread::sleep(std::time::Duration::from_millis(1000));
         index += 1;
     }

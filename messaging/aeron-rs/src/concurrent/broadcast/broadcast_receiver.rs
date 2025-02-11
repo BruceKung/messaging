@@ -48,7 +48,8 @@ impl BroadcastReceiver {
             buffer,
             capacity,
             mask: capacity - 1,
-            tail_intent_counter_index: capacity + broadcast_buffer_descriptor::TAIL_INTENT_COUNTER_OFFSET,
+            tail_intent_counter_index: capacity
+                + broadcast_buffer_descriptor::TAIL_INTENT_COUNTER_OFFSET,
             tail_counter_index: capacity + broadcast_buffer_descriptor::TAIL_COUNTER_OFFSET,
             latest_counter_index: capacity + broadcast_buffer_descriptor::LATEST_COUNTER_OFFSET,
             record_offset: (0),
@@ -74,7 +75,8 @@ impl BroadcastReceiver {
     }
 
     pub fn type_id(&self) -> i32 {
-        self.buffer.get::<i32>(record_descriptor::type_offset(self.record_offset))
+        self.buffer
+            .get::<i32>(record_descriptor::type_offset(self.record_offset))
     }
 
     pub fn offset(&self) -> Index {
@@ -82,7 +84,9 @@ impl BroadcastReceiver {
     }
 
     pub fn length(&self) -> i32 {
-        self.buffer.get::<i32>(record_descriptor::length_offset(self.record_offset)) - record_descriptor::HEADER_LENGTH
+        self.buffer
+            .get::<i32>(record_descriptor::length_offset(self.record_offset))
+            - record_descriptor::HEADER_LENGTH
     }
 
     pub fn buffer(&self) -> &AtomicBuffer {
@@ -105,15 +109,23 @@ impl BroadcastReceiver {
             self.cursor = cursor;
             self.next_record = cursor
                 + align(
-                    self.buffer.get::<i32>(record_descriptor::length_offset(record_offset)) as Index,
+                    self.buffer
+                        .get::<i32>(record_descriptor::length_offset(record_offset))
+                        as Index,
                     record_descriptor::RECORD_ALIGNMENT,
                 ) as i64;
 
-            if AeronCommand::Padding as i32 == self.buffer.get::<i32>(record_descriptor::type_offset(record_offset)) {
+            if AeronCommand::Padding as i32
+                == self
+                    .buffer
+                    .get::<i32>(record_descriptor::type_offset(record_offset))
+            {
                 record_offset = 0;
                 self.cursor = self.next_record;
                 self.next_record += align(
-                    self.buffer.get::<i32>(record_descriptor::length_offset(record_offset)) as Index,
+                    self.buffer
+                        .get::<i32>(record_descriptor::length_offset(record_offset))
+                        as Index,
                     record_descriptor::RECORD_ALIGNMENT,
                 ) as i64;
             }
@@ -131,14 +143,19 @@ impl BroadcastReceiver {
     }
 
     fn do_validate(&self, cursor: Index) -> bool {
-        cursor + self.capacity > self.buffer.get_volatile::<i64>(self.tail_intent_counter_index) as Index
+        cursor + self.capacity
+            > self
+                .buffer
+                .get_volatile::<i64>(self.tail_intent_counter_index) as Index
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::concurrent::{atomic_buffer::AlignedBuffer, broadcast::broadcast_transmitter::BroadcastTransmitter};
+    use crate::concurrent::{
+        atomic_buffer::AlignedBuffer, broadcast::broadcast_transmitter::BroadcastTransmitter,
+    };
 
     fn channel(buffer: AtomicBuffer) -> (BroadcastTransmitter, BroadcastReceiver) {
         (

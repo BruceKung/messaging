@@ -79,7 +79,9 @@ fn main() {
     let cnc_file = MemoryMappedFile::map_existing(filename, false).expect("Can't map file");
     let cnc_version = cnc_file_descriptor::cnc_version_volatile(&cnc_file);
 
-    if semantic_version_major(cnc_version) != semantic_version_major(cnc_file_descriptor::CNC_VERSION) {
+    if semantic_version_major(cnc_version)
+        != semantic_version_major(cnc_file_descriptor::CNC_VERSION)
+    {
         panic!(
             "CNC version is not supported: file={} app={}",
             semantic_version_to_string(cnc_version),
@@ -107,9 +109,16 @@ fn main() {
         println!("===========================");
 
         counters.for_each(|counter_id, _, _buffer, l| {
-            let value = counters.counter_value(counter_id).expect("Get an error from counter");
+            let value = counters
+                .counter_value(counter_id)
+                .expect("Get an error from counter");
 
-            println!("{:>3}:{:>20} - {}", counter_id, value, l.into_string().unwrap());
+            println!(
+                "{:>3}:{:>20} - {}",
+                counter_id,
+                value,
+                l.into_string().unwrap()
+            );
         });
         println!("===========================");
         thread::sleep(Duration::from_millis(settings.update_interval_ms));

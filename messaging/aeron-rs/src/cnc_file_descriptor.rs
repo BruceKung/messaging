@@ -86,8 +86,10 @@ struct MetaDataDefn {
 }
 
 lazy_static! {
-    pub static ref META_DATA_LENGTH: Index =
-        bit_utils::align(std::mem::size_of::<MetaDataDefn>() as Index, misc::CACHE_LINE_LENGTH * 2);
+    pub static ref META_DATA_LENGTH: Index = bit_utils::align(
+        std::mem::size_of::<MetaDataDefn>() as Index,
+        misc::CACHE_LINE_LENGTH * 2
+    );
 }
 
 pub fn cnc_version_volatile(cnc_file: &MemoryMappedFile) -> i32 {
@@ -101,7 +103,10 @@ pub fn create_to_driver_buffer(cnc_file: &MemoryMappedFile) -> AtomicBuffer {
 
     let meta_data = meta_data_buffer.get::<MetaDataDefn>(0);
 
-    cnc_file.atomic_buffer(*META_DATA_LENGTH, meta_data.to_driver_buffer_length as Index)
+    cnc_file.atomic_buffer(
+        *META_DATA_LENGTH,
+        meta_data.to_driver_buffer_length as Index,
+    )
 }
 
 pub fn create_to_clients_buffer(cnc_file: &MemoryMappedFile) -> AtomicBuffer {
@@ -120,7 +125,9 @@ pub fn create_counter_metadata_buffer(cnc_file: &MemoryMappedFile) -> AtomicBuff
     let meta_data = meta_data_buffer.get::<MetaDataDefn>(0);
 
     cnc_file.atomic_buffer(
-        *META_DATA_LENGTH + meta_data.to_driver_buffer_length as Index + meta_data.to_clients_buffer_length as Index,
+        *META_DATA_LENGTH
+            + meta_data.to_driver_buffer_length as Index
+            + meta_data.to_clients_buffer_length as Index,
         meta_data.counter_metadata_buffer_length as Index,
     )
 }

@@ -46,7 +46,9 @@ impl AgentStopper {
     }
 
     pub fn stop(&mut self) {
-        self.tx.send(true).expect("Can't send stop command to AgentRunner");
+        self.tx
+            .send(true)
+            .expect("Can't send stop command to AgentRunner");
 
         let _b = self.thread.take().unwrap().join();
     }
@@ -103,9 +105,11 @@ impl<
     pub fn start(mut this: Self) -> Result<AgentStopper, AeronError> {
         let (tx, rx) = channel::<bool>();
 
-        let th = thread::Builder::new().name(this.name.clone()).spawn(move || {
-            this.run(rx);
-        });
+        let th = thread::Builder::new()
+            .name(this.name.clone())
+            .spawn(move || {
+                this.run(rx);
+            });
 
         if let Ok(handle) = th {
             Ok(AgentStopper::new(handle, tx))
@@ -130,12 +134,12 @@ impl<
                 }
             }
 
-            let mut result : Result<i32, AeronError> = Ok(0);
+            let mut result: Result<i32, AeronError> = Ok(0);
             {
                 let mut agent = self.agent.lock().expect("Mutex poisoned");
                 result = agent.do_work();
             }
-            
+
             match result {
                 Ok(work_cnt) => self.idle_strategy.idle_opt(work_cnt),
                 Err(error) => self.exception_handler.call(error),

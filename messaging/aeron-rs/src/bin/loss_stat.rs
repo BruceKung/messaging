@@ -55,24 +55,28 @@ fn main() {
         panic!("Loss report does not exist: {}", filename);
     });
 
-    let loss_report_file = MemoryMappedFile::map_existing(filename, false).expect("Cannot map file");
+    let loss_report_file =
+        MemoryMappedFile::map_existing(filename, false).expect("Cannot map file");
     let buffer = loss_report_file.atomic_buffer(0, loss_report_file.memory_size());
 
     println!("OBSERVATION_COUNT, TOTAL_BYTES_LOST, FIRST_OBSERVATION, LAST_OBSERVATION, SESSION_ID, STREAM_ID, CHANNEL, SOURCE");
 
-    let entries_read = reports::read(&buffer, |observation_count, loss_report_entry, channel, source| {
-        println!(
-            "{},{},{},{},{},{},{:#?},{:#?}",
-            observation_count,
-            { loss_report_entry.total_bytes_lost },
-            format_date(loss_report_entry.first_observation_timestamp),
-            format_date(loss_report_entry.last_observation_timestamp),
-            loss_report_entry.session_id,
-            loss_report_entry.stream_id,
-            channel,
-            source
-        );
-    });
+    let entries_read = reports::read(
+        &buffer,
+        |observation_count, loss_report_entry, channel, source| {
+            println!(
+                "{},{},{},{},{},{},{:#?},{:#?}",
+                observation_count,
+                { loss_report_entry.total_bytes_lost },
+                format_date(loss_report_entry.first_observation_timestamp),
+                format_date(loss_report_entry.last_observation_timestamp),
+                loss_report_entry.session_id,
+                loss_report_entry.stream_id,
+                channel,
+                source
+            );
+        },
+    );
 
     println!("{} entries read", entries_read);
 }

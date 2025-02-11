@@ -149,9 +149,10 @@ impl BufferClaim {
      * Abort a claim of the message space to the log buffer so that log can progress ignoring this claim.
      */
     pub fn abort(&mut self) {
-        self.buffer
-            .expect("No buffer")
-            .put::<u16>(*data_frame_header::TYPE_FIELD_OFFSET, data_frame_header::HDR_TYPE_PAD);
+        self.buffer.expect("No buffer").put::<u16>(
+            *data_frame_header::TYPE_FIELD_OFFSET,
+            data_frame_header::HDR_TYPE_PAD,
+        );
         self.buffer
             .expect("No buffer")
             .put_ordered::<i32>(0, self.buffer.expect("No buffer").capacity());

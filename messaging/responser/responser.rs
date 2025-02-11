@@ -1,14 +1,17 @@
-use std::{
-    ffi::CString,
-    slice,
-    sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}},
-};
-use std::thread;
-use crate::{base::settings::Settings, requester::requester::Requester};
 use crate::base::utils::str_to_c;
 use crate::core::messaging::Messaging;
 use crate::publisher::publisher::Publisher;
 use crate::subscriber::subscriber::Subscriber;
+use crate::{base::settings::Settings, requester::requester::Requester};
+use std::thread;
+use std::{
+    ffi::CString,
+    slice,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
+};
 
 use aeron_rs::{
     aeron::Aeron,
@@ -56,7 +59,7 @@ pub type Responser = Requester;
 //        self.publisher.release();
 //        self.subscriber.release();
 //    }
-//    
+//
 //    pub fn response(&self, data: &[u8], len: i32) {
 //        println!("Publishing to Aeron");
 //        self.publisher.publish(data, len);

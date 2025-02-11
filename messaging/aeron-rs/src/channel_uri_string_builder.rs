@@ -143,7 +143,9 @@ impl ChannelUriStringBuilder {
 
     #[inline]
     pub fn control_mode(&mut self, control_mode: &str) -> Result<&mut Self, AeronError> {
-        if !control_mode.eq(channel_uri::MDC_CONTROL_MODE_MANUAL) && !control_mode.eq(channel_uri::MDC_CONTROL_MODE_DYNAMIC) {
+        if !control_mode.eq(channel_uri::MDC_CONTROL_MODE_MANUAL)
+            && !control_mode.eq(channel_uri::MDC_CONTROL_MODE_DYNAMIC)
+        {
             return Err(IllegalArgumentError::InvalidControlMode(control_mode.to_string()).into());
         }
 
@@ -237,11 +239,13 @@ impl ChannelUriStringBuilder {
         }
 
         if term_offset & (logbuffer::frame_descriptor::FRAME_ALIGNMENT - 1) as u32 != 0 {
-            return Err(IllegalArgumentError::TermOffsetNotMultipleOfFrameAlignment {
-                term_offset,
-                frame_alignment: logbuffer::frame_descriptor::FRAME_ALIGNMENT,
-            }
-            .into());
+            return Err(
+                IllegalArgumentError::TermOffsetNotMultipleOfFrameAlignment {
+                    term_offset,
+                    frame_alignment: logbuffer::frame_descriptor::FRAME_ALIGNMENT,
+                }
+                .into(),
+            );
         }
 
         self.term_offset = Some(Value::new(term_offset as i64));
@@ -335,15 +339,27 @@ impl ChannelUriStringBuilder {
         }
 
         if let Some(network_interface) = &self.network_interface {
-            sb += &format!("{}={}|", channel_uri::INTERFACE_PARAM_NAME, network_interface);
+            sb += &format!(
+                "{}={}|",
+                channel_uri::INTERFACE_PARAM_NAME,
+                network_interface
+            );
         }
 
         if let Some(control_endpoint) = &self.control_endpoint {
-            sb += &format!("{}={}|", channel_uri::MDC_CONTROL_PARAM_NAME, control_endpoint);
+            sb += &format!(
+                "{}={}|",
+                channel_uri::MDC_CONTROL_PARAM_NAME,
+                control_endpoint
+            );
         }
 
         if let Some(control_mode) = &self.control_mode {
-            sb += &format!("{}={}|", channel_uri::MDC_CONTROL_MODE_PARAM_NAME, control_mode);
+            sb += &format!(
+                "{}={}|",
+                channel_uri::MDC_CONTROL_MODE_PARAM_NAME,
+                control_mode
+            );
         }
 
         if let Some(mtu) = &self.mtu {
@@ -351,11 +367,19 @@ impl ChannelUriStringBuilder {
         }
 
         if let Some(term_length) = &self.term_length {
-            sb += &format!("{}={}|", channel_uri::TERM_LENGTH_PARAM_NAME, term_length.value);
+            sb += &format!(
+                "{}={}|",
+                channel_uri::TERM_LENGTH_PARAM_NAME,
+                term_length.value
+            );
         }
 
         if let Some(initial_term_id) = &self.initial_term_id {
-            sb += &format!("{}={}|", channel_uri::INITIAL_TERM_ID_PARAM_NAME, initial_term_id.value);
+            sb += &format!(
+                "{}={}|",
+                channel_uri::INITIAL_TERM_ID_PARAM_NAME,
+                initial_term_id.value
+            );
         }
 
         if let Some(term_id) = &self.term_id {
@@ -363,7 +387,11 @@ impl ChannelUriStringBuilder {
         }
 
         if let Some(term_offset) = &self.term_offset {
-            sb += &format!("{}={}|", channel_uri::TERM_OFFSET_PARAM_NAME, term_offset.value);
+            sb += &format!(
+                "{}={}|",
+                channel_uri::TERM_OFFSET_PARAM_NAME,
+                term_offset.value
+            );
         }
 
         if let Some(session_id) = &self.session_id {
@@ -399,23 +427,43 @@ impl ChannelUriStringBuilder {
         }
 
         if let Some(sparse) = &self.sparse {
-            sb += &format!("{}={}|", channel_uri::SPARSE_PARAM_NAME, Value::bool_to_string(sparse));
+            sb += &format!(
+                "{}={}|",
+                channel_uri::SPARSE_PARAM_NAME,
+                Value::bool_to_string(sparse)
+            );
         }
 
         if let Some(eos) = &self.eos {
-            sb += &format!("{}={}|", channel_uri::EOS_PARAM_NAME, Value::bool_to_string(eos));
+            sb += &format!(
+                "{}={}|",
+                channel_uri::EOS_PARAM_NAME,
+                Value::bool_to_string(eos)
+            );
         }
 
         if let Some(tether) = &self.tether {
-            sb += &format!("{}={}|", channel_uri::TETHER_PARAM_NAME, Value::bool_to_string(tether));
+            sb += &format!(
+                "{}={}|",
+                channel_uri::TETHER_PARAM_NAME,
+                Value::bool_to_string(tether)
+            );
         }
 
         if let Some(group) = &self.group {
-            sb += &format!("{}={}|", channel_uri::GROUP_PARAM_NAME, Value::bool_to_string(group));
+            sb += &format!(
+                "{}={}|",
+                channel_uri::GROUP_PARAM_NAME,
+                Value::bool_to_string(group)
+            );
         }
 
         if let Some(rejoin) = &self.rejoin {
-            sb += &format!("{}={}|", channel_uri::REJOIN_PARAM_NAME, Value::bool_to_string(rejoin));
+            sb += &format!(
+                "{}={}|",
+                channel_uri::REJOIN_PARAM_NAME,
+                Value::bool_to_string(rejoin)
+            );
         }
 
         let last_char = sb.chars().last().unwrap();
@@ -457,7 +505,10 @@ mod tests {
     fn should_generate_basic_udp_channel() {
         let mut builder = ChannelUriStringBuilder::default();
 
-        builder.media(channel_uri::UDP_MEDIA).unwrap().endpoint("localhost:9999");
+        builder
+            .media(channel_uri::UDP_MEDIA)
+            .unwrap()
+            .endpoint("localhost:9999");
 
         assert_eq!(builder.build(), "aeron:udp?endpoint=localhost:9999");
     }
@@ -473,7 +524,10 @@ mod tests {
             .unwrap()
             .endpoint("localhost:9999");
 
-        assert_eq!(builder.build(), "aeron-spy:aeron:udp?endpoint=localhost:9999");
+        assert_eq!(
+            builder.build(),
+            "aeron-spy:aeron:udp?endpoint=localhost:9999"
+        );
     }
 
     #[test]
@@ -488,7 +542,10 @@ mod tests {
             .term_length(1024 * 128)
             .unwrap();
 
-        assert_eq!(builder.build(), "aeron:udp?endpoint=localhost:9999|term-length=131072|ttl=9");
+        assert_eq!(
+            builder.build(),
+            "aeron:udp?endpoint=localhost:9999|term-length=131072|ttl=9"
+        );
     }
 
     #[test]

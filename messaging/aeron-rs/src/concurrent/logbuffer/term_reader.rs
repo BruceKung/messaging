@@ -148,15 +148,25 @@ mod tests {
 
         let msg_length = 1;
         let frame_length = data_frame_header::LENGTH + msg_length;
-        let aligned_frame_length = bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
+        let aligned_frame_length =
+            bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
         let term_offset = 0;
 
         log.put_ordered::<i32>(frame_descriptor::length_offset(0), frame_length);
-        log.put::<u16>(frame_descriptor::type_offset(0), data_frame_header::HDR_TYPE_DATA);
+        log.put::<u16>(
+            frame_descriptor::type_offset(0),
+            data_frame_header::HDR_TYPE_DATA,
+        );
 
         log.put_ordered::<i32>(frame_descriptor::length_offset(aligned_frame_length), 0);
 
-        let read_outcome = term_reader::read(log, term_offset, &mut data_handler, INT_MAX, &mut fragment_header);
+        let read_outcome = term_reader::read(
+            log,
+            term_offset,
+            &mut data_handler,
+            INT_MAX,
+            &mut fragment_header,
+        );
 
         assert_eq!(read_outcome.offset, aligned_frame_length);
         assert_eq!(read_outcome.fragments_read, 1);
@@ -170,7 +180,13 @@ mod tests {
 
         log.put_ordered::<i32>(frame_descriptor::length_offset(0), 0);
 
-        let read_outcome = term_reader::read(log, term_offset, &mut data_handler, INT_MAX, &mut fragment_header);
+        let read_outcome = term_reader::read(
+            log,
+            term_offset,
+            &mut data_handler,
+            INT_MAX,
+            &mut fragment_header,
+        );
 
         assert_eq!(read_outcome.offset, term_offset);
         assert_eq!(read_outcome.fragments_read, 0);
@@ -182,14 +198,19 @@ mod tests {
 
         let msg_length = 1;
         let frame_length = data_frame_header::LENGTH + msg_length;
-        let aligned_frame_length = bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
+        let aligned_frame_length =
+            bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
         let term_offset = 0;
 
         log.put_ordered::<i32>(frame_descriptor::length_offset(0), frame_length);
 
-        log.put::<u16>(frame_descriptor::type_offset(0), data_frame_header::HDR_TYPE_DATA);
+        log.put::<u16>(
+            frame_descriptor::type_offset(0),
+            data_frame_header::HDR_TYPE_DATA,
+        );
 
-        let read_outcome = term_reader::read(log, term_offset, &mut data_handler, 1, &mut fragment_header);
+        let read_outcome =
+            term_reader::read(log, term_offset, &mut data_handler, 1, &mut fragment_header);
 
         assert_eq!(read_outcome.offset, aligned_frame_length);
         assert_eq!(read_outcome.fragments_read, 1);
@@ -201,13 +222,20 @@ mod tests {
 
         let msg_length = 1;
         let frame_length = data_frame_header::LENGTH + msg_length;
-        let aligned_frame_length = bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
+        let aligned_frame_length =
+            bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
         let term_offset = 0;
 
         log.put_ordered::<i32>(frame_descriptor::length_offset(0), frame_length);
-        log.put::<u16>(frame_descriptor::type_offset(0), data_frame_header::HDR_TYPE_DATA);
+        log.put::<u16>(
+            frame_descriptor::type_offset(0),
+            data_frame_header::HDR_TYPE_DATA,
+        );
 
-        log.put_ordered::<i32>(frame_descriptor::length_offset(aligned_frame_length), frame_length);
+        log.put_ordered::<i32>(
+            frame_descriptor::length_offset(aligned_frame_length),
+            frame_length,
+        );
         log.put::<u16>(
             frame_descriptor::type_offset(aligned_frame_length),
             data_frame_header::HDR_TYPE_DATA,
@@ -215,7 +243,13 @@ mod tests {
 
         log.put_ordered::<i32>(frame_descriptor::length_offset(aligned_frame_length * 2), 0);
 
-        let read_outcome = term_reader::read(log, term_offset, &mut data_handler, INT_MAX, &mut fragment_header);
+        let read_outcome = term_reader::read(
+            log,
+            term_offset,
+            &mut data_handler,
+            INT_MAX,
+            &mut fragment_header,
+        );
 
         assert_eq!(read_outcome.offset, aligned_frame_length * 2);
         assert_eq!(read_outcome.fragments_read, 2);
@@ -227,16 +261,26 @@ mod tests {
 
         let msg_length = 1;
         let frame_length = data_frame_header::LENGTH + msg_length;
-        let aligned_frame_length = bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
+        let aligned_frame_length =
+            bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
         let start_of_message = LOG_BUFFER_CAPACITY - aligned_frame_length;
 
-        log.put_ordered::<i32>(frame_descriptor::length_offset(start_of_message), frame_length);
+        log.put_ordered::<i32>(
+            frame_descriptor::length_offset(start_of_message),
+            frame_length,
+        );
         log.put::<u16>(
             frame_descriptor::type_offset(start_of_message),
             data_frame_header::HDR_TYPE_DATA,
         );
 
-        let read_outcome = term_reader::read(log, start_of_message, &mut data_handler, INT_MAX, &mut fragment_header);
+        let read_outcome = term_reader::read(
+            log,
+            start_of_message,
+            &mut data_handler,
+            INT_MAX,
+            &mut fragment_header,
+        );
 
         assert_eq!(read_outcome.offset, LOG_BUFFER_CAPACITY);
         assert_eq!(read_outcome.fragments_read, 1);
@@ -248,16 +292,26 @@ mod tests {
 
         let msg_length = 1;
         let frame_length = data_frame_header::LENGTH + msg_length;
-        let aligned_frame_length = bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
+        let aligned_frame_length =
+            bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
         let start_of_message = LOG_BUFFER_CAPACITY - aligned_frame_length;
 
-        log.put_ordered::<i32>(frame_descriptor::length_offset(start_of_message), frame_length);
+        log.put_ordered::<i32>(
+            frame_descriptor::length_offset(start_of_message),
+            frame_length,
+        );
         log.put::<u16>(
             frame_descriptor::type_offset(start_of_message),
             data_frame_header::HDR_TYPE_PAD,
         );
 
-        let read_outcome = term_reader::read(log, start_of_message, &mut data_handler, INT_MAX, &mut fragment_header);
+        let read_outcome = term_reader::read(
+            log,
+            start_of_message,
+            &mut data_handler,
+            INT_MAX,
+            &mut fragment_header,
+        );
 
         assert_eq!(read_outcome.offset, LOG_BUFFER_CAPACITY);
         assert_eq!(read_outcome.fragments_read, 0);

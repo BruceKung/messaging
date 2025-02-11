@@ -66,7 +66,9 @@ pub(crate) struct CounterMessageFlyweight {
 impl CounterMessageFlyweight {
     pub fn new(buffer: AtomicBuffer, offset: Index) -> Self {
         let correlated_message_flyweight = CorrelatedMessageFlyweight::new(buffer, offset);
-        let m_struct = correlated_message_flyweight.flyweight.overlay_struct::<CounterMessageDefn>(0);
+        let m_struct = correlated_message_flyweight
+            .flyweight
+            .overlay_struct::<CounterMessageDefn>(0);
         Self {
             correlated_message_flyweight,
             m_struct,

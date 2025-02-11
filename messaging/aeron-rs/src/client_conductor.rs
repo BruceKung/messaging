@@ -36,8 +36,8 @@ use crate::{
         status::status_indicator_reader,
     },
     context::{
-        OnAvailableCounter, OnAvailableImage, OnCloseClient, OnNewPublication, OnNewSubscription, OnUnavailableCounter,
-        OnUnavailableImage,
+        OnAvailableCounter, OnAvailableImage, OnCloseClient, OnNewPublication, OnNewSubscription,
+        OnUnavailableCounter, OnUnavailableImage,
     },
     counter::Counter,
     driver_listener_adapter::{DriverListener, DriverListenerAdapter},
@@ -335,7 +335,10 @@ impl ClientConductor {
             lingering_image_lists: vec![],
             driver_proxy,
             driver_listener_adapter: None,
-            counters_reader: Arc::new(CountersReader::new(counter_metadata_buffer, counter_values_buffer)),
+            counters_reader: Arc::new(CountersReader::new(
+                counter_metadata_buffer,
+                counter_values_buffer,
+            )),
             counter_values_buffer,
             on_new_publication_handler,
             on_new_exclusive_publication_handler,
@@ -361,14 +364,21 @@ impl ClientConductor {
             padding: [0; crate::utils::misc::CACHE_LINE_LENGTH as usize],
         };
 
-        selfy.on_available_counter_handlers.push(on_available_counter_handler);
-        selfy.on_unavailable_counter_handlers.push(on_unavailable_counter_handler);
+        selfy
+            .on_available_counter_handlers
+            .push(on_available_counter_handler);
+        selfy
+            .on_unavailable_counter_handlers
+            .push(on_unavailable_counter_handler);
         selfy.on_close_client_handlers.push(on_close_client_handler);
 
         let arc_selfy = Arc::new(Mutex::new(selfy));
         let another_selfy = arc_selfy.clone();
         let mut another_selfy_mut = another_selfy.lock().expect("Mutex poisoned");
-        another_selfy_mut.driver_listener_adapter = Some(DriverListenerAdapter::new(broadcast_receiver, arc_selfy.clone()));
+        another_selfy_mut.driver_listener_adapter = Some(DriverListenerAdapter::new(
+            broadcast_receiver,
+            arc_selfy.clone(),
+        ));
         another_selfy_mut.arced_self = Some(arc_selfy.clone());
 
         arc_selfy
@@ -406,7 +416,9 @@ impl ClientConductor {
     pub fn channel_status(&self, counter_id: i32) -> i64 {
         match counter_id {
             0 => status_indicator_reader::CHANNEL_ENDPOINT_INITIALIZING,
-            status_indicator_reader::NO_ID_ALLOCATED => status_indicator_reader::CHANNEL_ENDPOINT_ACTIVE,
+            status_indicator_reader::NO_ID_ALLOCATED => {
+                status_indicator_reader::CHANNEL_ENDPOINT_ACTIVE
+            }
             _ => self
                 .counters_reader
                 .counter_value(counter_id)
@@ -437,7 +449,9 @@ impl ClientConductor {
         if now_ms > self.time_of_last_do_work_ms + self.inter_service_timeout_ms {
             self.close_all_resources(now_ms);
 
-            let err = GenericError::TimeoutBetweenServiceCallsOverTimeout(self.inter_service_timeout_ms).into();
+            let err =
+                GenericError::TimeoutBetweenServiceCallsOverTimeout(self.inter_service_timeout_ms)
+                    .into();
 
             log!(trace, "on_heartbeat_check_timeouts: {:?}", &err);
 
@@ -537,13 +551,20 @@ impl ClientConductor {
         log_filename: CString,
         channel: CString,
     ) -> Result<Arc<LogBuffers>, AeronError> {
-        if let Some(lb) = self.log_buffers_by_registration_id.get_mut(&registration_id) {
+        if let Some(lb) = self
+            .log_buffers_by_registration_id
+            .get_mut(&registration_id)
+        {
             lb.time_of_last_state_change_ms = MAX_MOMENT;
 
             Ok(lb.log_buffers.clone())
         } else {
-            let touch = self.pre_touch_mapped_memory && !channel.to_string_lossy().contains("sparse=true");
-            let log_buffer = LogBuffers::from_existing(log_filename.into_string().expect("CString conv error"), touch)?;
+            let touch =
+                self.pre_touch_mapped_memory && !channel.to_string_lossy().contains("sparse=true");
+            let log_buffer = LogBuffers::from_existing(
+                log_filename.into_string().expect("CString conv error"),
+                touch,
+            )?;
 
             let log_buffers = Arc::new(log_buffer);
             self.log_buffers_by_registration_id
@@ -590,7 +611,9 @@ impl ClientConductor {
         self.ensure_not_reentrant();
         self.ensure_open()?;
 
-        let registration_id = self.driver_proxy.add_publication(channel.clone(), stream_id)?;
+        let registration_id = self
+            .driver_proxy
+            .add_publication(channel.clone(), stream_id)?;
 
         self.publication_by_registration_id.insert(
             registration_id,
@@ -606,7 +629,10 @@ impl ClientConductor {
         Ok(registration_id)
     }
 
-    pub fn find_publication(&mut self, registration_id: i64) -> Result<Arc<Mutex<Publication>>, AeronError> {
+    pub fn find_publication(
+        &mut self,
+        registration_id: i64,
+    ) -> Result<Arc<Mutex<Publication>>, AeronError> {
         /*
         let _guard = self
             .admin_lock
@@ -620,7 +646,10 @@ impl ClientConductor {
 
         let mut publication_to_remove: Option<i64> = None;
 
-        let result = if let Some(state) = self.publication_by_registration_id.get_mut(&registration_id) {
+        let result = if let Some(state) = self
+            .publication_by_registration_id
+            .get_mut(&registration_id)
+        {
             // try to upgrade weak ptr to strong one.
             if let Some(maybe_publication) = &state.publication {
                 // If there is publication - just return it
@@ -638,15 +667,19 @@ impl ClientConductor {
                 // Otherwise fill in the state.publication
                 match state.status {
                     RegistrationStatus::Awaiting => {
-                        if (self.epoch_clock)() > state.time_of_registration_ms + self.driver_timeout_ms {
+                        if (self.epoch_clock)()
+                            > state.time_of_registration_ms + self.driver_timeout_ms
+                        {
                             Err(DriverInteractionError::NoResponse(self.driver_timeout_ms).into())
                         } else {
                             Err(AeronError::PublicationNotReady(registration_id))
                         }
                     }
                     RegistrationStatus::Registered => {
-                        let publication_limit =
-                            UnsafeBufferPosition::new(self.counter_values_buffer, state.publication_limit_counter_id);
+                        let publication_limit = UnsafeBufferPosition::new(
+                            self.counter_values_buffer,
+                            state.publication_limit_counter_id,
+                        );
 
                         if let Some(buffers) = &state.buffers {
                             let self_for_pub = self.arced_self.as_ref().unwrap();
@@ -701,11 +734,18 @@ impl ClientConductor {
     }
 
     pub fn return_registration_error(err_code: i32, err_message: &CStr) -> AeronError {
-        AeronError::RegistrationException(err_code, String::from(err_message.to_str().expect("CStr conversion error")))
+        AeronError::RegistrationException(
+            err_code,
+            String::from(err_message.to_str().expect("CStr conversion error")),
+        )
     }
 
     pub fn release_publication(&mut self, registration_id: i64) -> Result<(), AeronError> {
-        log!(trace, "release_publication: with registration_id {}", registration_id);
+        log!(
+            trace,
+            "release_publication: with registration_id {}",
+            registration_id
+        );
 
         self.verify_driver_is_active_via_error_handler();
 
@@ -728,7 +768,11 @@ impl ClientConductor {
         }
     }
 
-    pub fn add_exclusive_publication(&mut self, channel: CString, stream_id: i32) -> Result<i64, AeronError> {
+    pub fn add_exclusive_publication(
+        &mut self,
+        channel: CString,
+        stream_id: i32,
+    ) -> Result<i64, AeronError> {
         log!(
             trace,
             "add_exclusive_publication: on channel:{} stream:{}",
@@ -740,11 +784,18 @@ impl ClientConductor {
         self.ensure_not_reentrant();
         self.ensure_open()?;
 
-        let registration_id = self.driver_proxy.add_exclusive_publication(channel.clone(), stream_id)?;
+        let registration_id = self
+            .driver_proxy
+            .add_exclusive_publication(channel.clone(), stream_id)?;
 
         self.exclusive_publication_by_registration_id.insert(
             registration_id,
-            ExclusivePublicationStateDefn::new(channel, registration_id, stream_id, (self.epoch_clock)()),
+            ExclusivePublicationStateDefn::new(
+                channel,
+                registration_id,
+                stream_id,
+                (self.epoch_clock)(),
+            ),
         );
 
         log!(
@@ -760,13 +811,20 @@ impl ClientConductor {
         &mut self,
         registration_id: i64,
     ) -> Result<Arc<Mutex<ExclusivePublication>>, AeronError> {
-        log!(trace, "find_exclusive_publication: with registration_id {}", registration_id);
+        log!(
+            trace,
+            "find_exclusive_publication: with registration_id {}",
+            registration_id
+        );
 
         self.ensure_not_reentrant();
         self.ensure_open()?;
         let mut publication_to_remove: Option<i64> = None;
 
-        let result = if let Some(state) = self.exclusive_publication_by_registration_id.get_mut(&registration_id) {
+        let result = if let Some(state) = self
+            .exclusive_publication_by_registration_id
+            .get_mut(&registration_id)
+        {
             // try to upgrade weak ptr to strong one.
             if let Some(maybe_publication) = &state.publication {
                 // If there is publication - just return it
@@ -784,15 +842,22 @@ impl ClientConductor {
                 // Otherwise fill in the state.publication
                 match state.status {
                     RegistrationStatus::Awaiting => {
-                        if (self.epoch_clock)() > state.time_of_registration_ms + self.driver_timeout_ms {
+                        if (self.epoch_clock)()
+                            > state.time_of_registration_ms + self.driver_timeout_ms
+                        {
                             Err(DriverInteractionError::NoResponse(self.driver_timeout_ms).into())
                         } else {
-                            Err(GenericError::ExclusivePublicationNotReadyYet { status: state.status }.into())
+                            Err(GenericError::ExclusivePublicationNotReadyYet {
+                                status: state.status,
+                            }
+                            .into())
                         }
                     }
                     RegistrationStatus::Registered => {
-                        let publication_limit =
-                            UnsafeBufferPosition::new(self.counter_values_buffer, state.publication_limit_counter_id);
+                        let publication_limit = UnsafeBufferPosition::new(
+                            self.counter_values_buffer,
+                            state.publication_limit_counter_id,
+                        );
 
                         if let Some(buffers) = &state.buffers {
                             let publication = ExclusivePublication::new(
@@ -845,7 +910,10 @@ impl ClientConductor {
         result
     }
 
-    pub fn release_exclusive_publication(&mut self, registration_id: i64) -> Result<(), AeronError> {
+    pub fn release_exclusive_publication(
+        &mut self,
+        registration_id: i64,
+    ) -> Result<(), AeronError> {
         log!(
             trace,
             "release_exclusive_publication: with registration_id {}",
@@ -854,9 +922,13 @@ impl ClientConductor {
 
         self.verify_driver_is_active_via_error_handler();
 
-        if let Some(_publication) = self.exclusive_publication_by_registration_id.get(&registration_id) {
+        if let Some(_publication) = self
+            .exclusive_publication_by_registration_id
+            .get(&registration_id)
+        {
             let _result = self.driver_proxy.remove_publication(registration_id);
-            self.exclusive_publication_by_registration_id.remove(&registration_id);
+            self.exclusive_publication_by_registration_id
+                .remove(&registration_id);
             log!(
                 trace,
                 "release_exclusive_publication: exclusive publication with registration_id {} RELEASED",
@@ -891,7 +963,9 @@ impl ClientConductor {
         self.ensure_not_reentrant();
         self.ensure_open()?;
 
-        let registration_id = self.driver_proxy.add_subscription(channel.clone(), stream_id)?;
+        let registration_id = self
+            .driver_proxy
+            .add_subscription(channel.clone(), stream_id)?;
 
         self.subscription_by_registration_id.insert(
             registration_id,
@@ -914,7 +988,10 @@ impl ClientConductor {
         Ok(registration_id)
     }
 
-    pub fn find_subscription(&mut self, registration_id: i64) -> Result<Arc<Mutex<Subscription>>, AeronError> {
+    pub fn find_subscription(
+        &mut self,
+        registration_id: i64,
+    ) -> Result<Arc<Mutex<Subscription>>, AeronError> {
         //log!(trace, "find_subscription: with registration_id {}", registration_id);
 
         self.ensure_not_reentrant();
@@ -923,7 +1000,10 @@ impl ClientConductor {
         // These two tricky fields are needed to avoid double mut borrows of publication_by_registration_id
         let mut subscription_to_remove: Option<i64> = None;
 
-        let result = if let Some(state) = self.subscription_by_registration_id.get_mut(&registration_id) {
+        let result = if let Some(state) = self
+            .subscription_by_registration_id
+            .get_mut(&registration_id)
+        {
             // try to upgrade weak ptr to strong one.
             if let Some(maybe_subscription) = &state.subscription {
                 // If there is subscription - just return it
@@ -944,7 +1024,8 @@ impl ClientConductor {
             } else {
                 // state.subscription in None - was not set in the past
                 if RegistrationStatus::Awaiting == state.status {
-                    if (self.epoch_clock)() > state.time_of_registration_ms + self.driver_timeout_ms {
+                    if (self.epoch_clock)() > state.time_of_registration_ms + self.driver_timeout_ms
+                    {
                         Err(DriverInteractionError::NoResponse(self.driver_timeout_ms).into())
                     } else {
                         Err(AeronError::SubscriptionNotReady(registration_id))
@@ -956,7 +1037,10 @@ impl ClientConductor {
                         &state.error_message,
                     ))
                 } else {
-                    Err(GenericError::SubscriptionWasNotCreatedBefore { status: state.status }.into())
+                    Err(GenericError::SubscriptionWasNotCreatedBefore {
+                        status: state.status,
+                    }
+                    .into())
                 }
             }
         } else {
@@ -970,8 +1054,16 @@ impl ClientConductor {
         result
     }
 
-    pub fn release_subscription(&mut self, registration_id: i64, mut images: Vec<Image>) -> Result<(), AeronError> {
-        log!(trace, "release_subscription: with registration_id {}", registration_id);
+    pub fn release_subscription(
+        &mut self,
+        registration_id: i64,
+        mut images: Vec<Image>,
+    ) -> Result<(), AeronError> {
+        log!(
+            trace,
+            "release_subscription: with registration_id {}",
+            registration_id
+        );
 
         self.verify_driver_is_active_via_error_handler();
 
@@ -995,7 +1087,8 @@ impl ClientConductor {
         }
 
         self.linger_all_resources((self.epoch_clock)(), images);
-        self.subscription_by_registration_id.remove(&registration_id);
+        self.subscription_by_registration_id
+            .remove(&registration_id);
         log!(
             trace,
             "release_subscription: subscription with registration_id {} RELEASED together with its images",
@@ -1005,8 +1098,18 @@ impl ClientConductor {
         Ok(())
     }
 
-    pub fn add_counter(&mut self, type_id: i32, key_buffer: &[u8], label: &str) -> Result<i64, AeronError> {
-        log!(trace, "add_counter: with type_id:{} label:{}", type_id, label);
+    pub fn add_counter(
+        &mut self,
+        type_id: i32,
+        key_buffer: &[u8],
+        label: &str,
+    ) -> Result<i64, AeronError> {
+        log!(
+            trace,
+            "add_counter: with type_id:{} label:{}",
+            type_id,
+            label
+        );
 
         self.verify_driver_is_active()?;
         self.ensure_not_reentrant();
@@ -1028,12 +1131,14 @@ impl ClientConductor {
             .into());
         }
 
-        let registration_id = self
-            .driver_proxy
-            .add_counter(type_id, key_buffer, CString::new(label).unwrap())?;
+        let registration_id =
+            self.driver_proxy
+                .add_counter(type_id, key_buffer, CString::new(label).unwrap())?;
 
-        self.counter_by_registration_id
-            .insert(registration_id, CounterStateDefn::new(registration_id, (self.epoch_clock)()));
+        self.counter_by_registration_id.insert(
+            registration_id,
+            CounterStateDefn::new(registration_id, (self.epoch_clock)()),
+        );
 
         log!(
             trace,
@@ -1047,14 +1152,19 @@ impl ClientConductor {
     }
 
     pub fn find_counter(&mut self, registration_id: i64) -> Result<Arc<Counter>, AeronError> {
-        log!(trace, "find_counter: with registration_id {}", registration_id);
+        log!(
+            trace,
+            "find_counter: with registration_id {}",
+            registration_id
+        );
 
         self.ensure_not_reentrant();
         self.ensure_open()?;
 
         let mut counter_to_remove: Option<i64> = None;
 
-        let result = if let Some(state) = self.counter_by_registration_id.get_mut(&registration_id) {
+        let result = if let Some(state) = self.counter_by_registration_id.get_mut(&registration_id)
+        {
             // try to upgrade weak ptr to strong one.
             if let Some(maybe_counter) = &state.counter {
                 // If there is counter - just return it
@@ -1075,10 +1185,14 @@ impl ClientConductor {
             } else {
                 // state.counter in None - was not set in the past
                 if RegistrationStatus::Awaiting == state.status {
-                    if (self.epoch_clock)() > state.time_of_registration_ms + self.driver_timeout_ms {
+                    if (self.epoch_clock)() > state.time_of_registration_ms + self.driver_timeout_ms
+                    {
                         Err(DriverInteractionError::NoResponse(self.driver_timeout_ms).into())
                     } else {
-                        Err(GenericError::CounterNotReadyYet { status: state.status }.into())
+                        Err(GenericError::CounterNotReadyYet {
+                            status: state.status,
+                        }
+                        .into())
                     }
                 } else if RegistrationStatus::Errored == state.status {
                     counter_to_remove = Some(registration_id);
@@ -1087,7 +1201,10 @@ impl ClientConductor {
                         &state.error_message,
                     ))
                 } else {
-                    Err(GenericError::CounterWasNotCreatedBefore { status: state.status }.into())
+                    Err(GenericError::CounterWasNotCreatedBefore {
+                        status: state.status,
+                    }
+                    .into())
                 }
             }
         } else {
@@ -1124,7 +1241,11 @@ impl ClientConductor {
         Ok(())
     }
 
-    pub fn add_destination(&mut self, publication_registration_id: i64, endpoint_channel: CString) -> Result<i64, AeronError> {
+    pub fn add_destination(
+        &mut self,
+        publication_registration_id: i64,
+        endpoint_channel: CString,
+    ) -> Result<i64, AeronError> {
         log!(
             trace,
             "add_destination: with publication_registration_id:{} channel: {}",
@@ -1142,7 +1263,11 @@ impl ClientConductor {
 
         self.destination_state_by_correlation_id.insert(
             correlation_id,
-            DestinationStateDefn::new(correlation_id, publication_registration_id, (self.epoch_clock)()),
+            DestinationStateDefn::new(
+                correlation_id,
+                publication_registration_id,
+                (self.epoch_clock)(),
+            ),
         );
 
         log!(
@@ -1154,7 +1279,11 @@ impl ClientConductor {
         Ok(correlation_id)
     }
 
-    pub fn remove_destination(&mut self, publication_registration_id: i64, endpoint_channel: CString) -> Result<i64, AeronError> {
+    pub fn remove_destination(
+        &mut self,
+        publication_registration_id: i64,
+        endpoint_channel: CString,
+    ) -> Result<i64, AeronError> {
         log!(
             trace,
             "remove_destination: with publication_registration_id:{} channel: {}",
@@ -1174,7 +1303,11 @@ impl ClientConductor {
         // destination_state_by_correlation_id instead of inserting.
         self.destination_state_by_correlation_id.insert(
             correlation_id,
-            DestinationStateDefn::new(correlation_id, publication_registration_id, (self.epoch_clock)()),
+            DestinationStateDefn::new(
+                correlation_id,
+                publication_registration_id,
+                (self.epoch_clock)(),
+            ),
         );
 
         log!(
@@ -1208,7 +1341,11 @@ impl ClientConductor {
 
         self.destination_state_by_correlation_id.insert(
             correlation_id,
-            DestinationStateDefn::new(correlation_id, subscription_registration_id, (self.epoch_clock)()),
+            DestinationStateDefn::new(
+                correlation_id,
+                subscription_registration_id,
+                (self.epoch_clock)(),
+            ),
         );
 
         log!(
@@ -1242,7 +1379,11 @@ impl ClientConductor {
 
         self.destination_state_by_correlation_id.insert(
             correlation_id,
-            DestinationStateDefn::new(correlation_id, subscription_registration_id, (self.epoch_clock)()),
+            DestinationStateDefn::new(
+                correlation_id,
+                subscription_registration_id,
+                (self.epoch_clock)(),
+            ),
         );
 
         log!(
@@ -1260,10 +1401,14 @@ impl ClientConductor {
 
         let destination_to_remove: Option<i64> = None;
 
-        let result = if let Some(state) = self.destination_state_by_correlation_id.get_mut(&correlation_id) {
+        let result = if let Some(state) = self
+            .destination_state_by_correlation_id
+            .get_mut(&correlation_id)
+        {
             match state.status {
                 RegistrationStatus::Awaiting => {
-                    if (self.epoch_clock)() > state.time_of_registration_ms + self.driver_timeout_ms {
+                    if (self.epoch_clock)() > state.time_of_registration_ms + self.driver_timeout_ms
+                    {
                         Err(DriverInteractionError::NoResponse(self.driver_timeout_ms).into())
                     } else {
                         Ok(false)
@@ -1287,7 +1432,10 @@ impl ClientConductor {
         result
     }
 
-    pub fn add_available_counter_handler(&mut self, handler: Box<dyn OnAvailableCounter>) -> Result<(), AeronError> {
+    pub fn add_available_counter_handler(
+        &mut self,
+        handler: Box<dyn OnAvailableCounter>,
+    ) -> Result<(), AeronError> {
         self.ensure_not_reentrant();
         self.ensure_open()?;
 
@@ -1295,7 +1443,10 @@ impl ClientConductor {
         Ok(())
     }
 
-    pub fn remove_available_counter_handler(&mut self, _handler: Box<dyn OnAvailableCounter>) -> Result<(), AeronError> {
+    pub fn remove_available_counter_handler(
+        &mut self,
+        _handler: Box<dyn OnAvailableCounter>,
+    ) -> Result<(), AeronError> {
         self.ensure_not_reentrant();
         self.ensure_open()?;
 
@@ -1303,7 +1454,10 @@ impl ClientConductor {
         Ok(())
     }
 
-    pub fn add_unavailable_counter_handler(&mut self, handler: Box<dyn OnUnavailableCounter>) -> Result<(), AeronError> {
+    pub fn add_unavailable_counter_handler(
+        &mut self,
+        handler: Box<dyn OnUnavailableCounter>,
+    ) -> Result<(), AeronError> {
         self.ensure_not_reentrant();
         self.ensure_open()?;
 
@@ -1311,14 +1465,20 @@ impl ClientConductor {
         Ok(())
     }
 
-    pub fn remove_unavailable_counter_handler(&mut self, _handler: Box<dyn OnUnavailableCounter>) -> Result<(), AeronError> {
+    pub fn remove_unavailable_counter_handler(
+        &mut self,
+        _handler: Box<dyn OnUnavailableCounter>,
+    ) -> Result<(), AeronError> {
         self.ensure_not_reentrant();
         self.ensure_open()?;
         //self.on_unavailable_counter_handlers.retain(|item| item != handler); FIXME
         Ok(())
     }
 
-    pub fn add_close_client_handler(&mut self, handler: Box<dyn OnCloseClient>) -> Result<(), AeronError> {
+    pub fn add_close_client_handler(
+        &mut self,
+        handler: Box<dyn OnCloseClient>,
+    ) -> Result<(), AeronError> {
         self.ensure_not_reentrant();
         self.ensure_open()?;
 
@@ -1326,7 +1486,10 @@ impl ClientConductor {
         Ok(())
     }
 
-    pub fn remove_close_client_handler(&mut self, _handler: Box<dyn OnCloseClient>) -> Result<(), AeronError> {
+    pub fn remove_close_client_handler(
+        &mut self,
+        _handler: Box<dyn OnCloseClient>,
+    ) -> Result<(), AeronError> {
         self.ensure_not_reentrant();
         self.ensure_open()?;
 
@@ -1364,7 +1527,11 @@ impl ClientConductor {
         for sub_defn in self.subscription_by_registration_id.values_mut() {
             if let Some(maybe_subscription) = &sub_defn.subscription {
                 if let Some(subscription) = maybe_subscription.upgrade() {
-                    if let Some(mut images) = subscription.lock().expect("Mutex poisoned").close_and_remove_images() {
+                    if let Some(mut images) = subscription
+                        .lock()
+                        .expect("Mutex poisoned")
+                        .close_and_remove_images()
+                    {
                         for image in images.iter_mut() {
                             image.close();
 
@@ -1425,7 +1592,9 @@ impl ClientConductor {
             if Arc::strong_count(&entry.log_buffers) == 1 {
                 if MAX_MOMENT == entry.time_of_last_state_change_ms {
                     entry.time_of_last_state_change_ms = now_ms;
-                } else if now_ms - self.resource_linger_timeout_ms > entry.time_of_last_state_change_ms {
+                } else if now_ms - self.resource_linger_timeout_ms
+                    > entry.time_of_last_state_change_ms
+                {
                     log_buffers_to_remove.push(*id);
                 }
             }
@@ -1444,7 +1613,8 @@ impl ClientConductor {
     }
 
     pub fn linger_resource(&mut self, now_ms: Moment, images: Vec<Image>) {
-        self.lingering_image_lists.push(ImageListLingerDefn::new(now_ms, images));
+        self.lingering_image_lists
+            .push(ImageListLingerDefn::new(now_ms, images));
     }
 
     pub fn linger_all_resources(&mut self, now_ms: Moment, images: Vec<Image>) {
@@ -1519,7 +1689,10 @@ impl DriverListener for ClientConductor {
             );
         }
 
-        if let Some(state) = self.publication_by_registration_id.get_mut(&registration_id) {
+        if let Some(state) = self
+            .publication_by_registration_id
+            .get_mut(&registration_id)
+        {
             state.status = RegistrationStatus::Registered;
             state.session_id = session_id;
             state.publication_limit_counter_id = publication_limit_counter_id;
@@ -1528,8 +1701,12 @@ impl DriverListener for ClientConductor {
             state.original_registration_id = original_registration_id;
 
             let _callback_guard = CallbackGuard::new(&mut self.is_in_callback);
-            self.on_new_publication_handler
-                .call(state.channel.clone(), stream_id, session_id, registration_id);
+            self.on_new_publication_handler.call(
+                state.channel.clone(),
+                stream_id,
+                session_id,
+                registration_id,
+            );
         }
     }
 
@@ -1548,7 +1725,10 @@ impl DriverListener for ClientConductor {
         let mut log_buffers: Option<Arc<LogBuffers>> = None;
         let mut maybe_channel: Option<CString> = None;
 
-        if let Some(state) = self.exclusive_publication_by_registration_id.get(&registration_id) {
+        if let Some(state) = self
+            .exclusive_publication_by_registration_id
+            .get(&registration_id)
+        {
             log!(trace, "on_new_exclusive_publication: registration_id {}, original_registration_id {}, stream_id {}, session_id {}, publication_limit_counter_id {}, channel_status_indicator_id {}, log_file_name \"{}\"",
                 registration_id,
                 original_registration_id,
@@ -1575,7 +1755,10 @@ impl DriverListener for ClientConductor {
             );
         }
 
-        if let Some(state) = self.exclusive_publication_by_registration_id.get_mut(&registration_id) {
+        if let Some(state) = self
+            .exclusive_publication_by_registration_id
+            .get_mut(&registration_id)
+        {
             state.status = RegistrationStatus::Registered;
             state.session_id = session_id;
             state.publication_limit_counter_id = publication_limit_counter_id;
@@ -1583,13 +1766,20 @@ impl DriverListener for ClientConductor {
             state.buffers = log_buffers;
 
             let _callback_guard = CallbackGuard::new(&mut self.is_in_callback);
-            self.on_new_exclusive_publication_handler
-                .call(state.channel.clone(), stream_id, session_id, registration_id);
+            self.on_new_exclusive_publication_handler.call(
+                state.channel.clone(),
+                stream_id,
+                session_id,
+                registration_id,
+            );
         }
     }
 
     fn on_subscription_ready(&mut self, registration_id: i64, channel_status_id: i32) {
-        if let Some(state) = self.subscription_by_registration_id.get_mut(&registration_id) {
+        if let Some(state) = self
+            .subscription_by_registration_id
+            .get_mut(&registration_id)
+        {
             log!(
                 trace,
                 "on_subscription_ready: registration_id {}, channel_status_id {}",
@@ -1610,14 +1800,24 @@ impl DriverListener for ClientConductor {
             state.subscription = Some(Arc::downgrade(&subscr));
 
             let _callback_guard = CallbackGuard::new(&mut self.is_in_callback);
-            self.on_new_subscription_handler
-                .call(state.channel.clone(), state.stream_id, registration_id);
+            self.on_new_subscription_handler.call(
+                state.channel.clone(),
+                state.stream_id,
+                registration_id,
+            );
         }
     }
 
     fn on_operation_success(&mut self, correlation_id: i64) {
-        if let Some(state) = self.destination_state_by_correlation_id.get_mut(&correlation_id) {
-            log!(trace, "on_operation_success: correlation_id {}", correlation_id);
+        if let Some(state) = self
+            .destination_state_by_correlation_id
+            .get_mut(&correlation_id)
+        {
+            log!(
+                trace,
+                "on_operation_success: correlation_id {}",
+                correlation_id
+            );
 
             if state.status == RegistrationStatus::Awaiting {
                 state.status = RegistrationStatus::Registered;
@@ -1625,7 +1825,11 @@ impl DriverListener for ClientConductor {
         }
     }
 
-    fn on_channel_endpoint_error_response(&mut self, offending_command_correlation_id: i64, error_message: CString) {
+    fn on_channel_endpoint_error_response(
+        &mut self,
+        offending_command_correlation_id: i64,
+        error_message: CString,
+    ) {
         let mut subscription_to_remove: Vec<i64> = Vec::new();
         let mut linger_images: Vec<Vec<Image>> = Vec::new();
 
@@ -1669,7 +1873,10 @@ impl DriverListener for ClientConductor {
         for (reg_id, publication_defn) in &self.publication_by_registration_id {
             if let Some(maybe_publication) = &publication_defn.publication {
                 if let Some(publication) = maybe_publication.upgrade() {
-                    if publication.lock().expect("Mutex on pub poisoned").channel_status_id()
+                    if publication
+                        .lock()
+                        .expect("Mutex on pub poisoned")
+                        .channel_status_id()
                         == offending_command_correlation_id as i32
                     {
                         log!(trace, "on_channel_endpoint_error_response: for publication, offending_command_correlation_id {}, error_message {}", offending_command_correlation_id, error_message.to_str().unwrap());
@@ -1693,7 +1900,10 @@ impl DriverListener for ClientConductor {
         for (reg_id, publication_defn) in &self.exclusive_publication_by_registration_id {
             if let Some(maybe_publication) = &publication_defn.publication {
                 if let Some(publication) = maybe_publication.upgrade() {
-                    if publication.lock().expect("Mutex on pub poisoned").channel_status_id()
+                    if publication
+                        .lock()
+                        .expect("Mutex on pub poisoned")
+                        .channel_status_id()
                         == offending_command_correlation_id as i32
                     {
                         self.error_handler.call(ChannelEndpointException(
@@ -1712,7 +1922,12 @@ impl DriverListener for ClientConductor {
             .collect();
     }
 
-    fn on_error_response(&mut self, offending_command_correlation_id: i64, error_code: i32, error_message: CString) {
+    fn on_error_response(
+        &mut self,
+        offending_command_correlation_id: i64,
+        error_code: i32,
+        error_message: CString,
+    ) {
         if let Some(subscription) = self
             .subscription_by_registration_id
             .get_mut(&offending_command_correlation_id)
@@ -1730,7 +1945,10 @@ impl DriverListener for ClientConductor {
             return;
         }
 
-        if let Some(publication) = self.publication_by_registration_id.get_mut(&offending_command_correlation_id) {
+        if let Some(publication) = self
+            .publication_by_registration_id
+            .get_mut(&offending_command_correlation_id)
+        {
             log!(
                 trace,
                 "on_error_response: for publication, offending_command_correlation_id {}, error_code {}, error_message {}",
@@ -1755,7 +1973,10 @@ impl DriverListener for ClientConductor {
             return;
         }
 
-        if let Some(counter) = self.counter_by_registration_id.get_mut(&offending_command_correlation_id) {
+        if let Some(counter) = self
+            .counter_by_registration_id
+            .get_mut(&offending_command_correlation_id)
+        {
             log!(
                 trace,
                 "on_error_response: for counter, offending_command_correlation_id {}, error_code {}, error_message {}",
@@ -1800,7 +2021,10 @@ impl DriverListener for ClientConductor {
         let mut maybe_channel: Option<CString> = None;
 
         // This piece of code is separated from the below (with same condition) to make borrow checker happy.
-        if let Some(subscr_defn) = self.subscription_by_registration_id.get(&subscription_registration_id) {
+        if let Some(subscr_defn) = self
+            .subscription_by_registration_id
+            .get(&subscription_registration_id)
+        {
             if let Some(maybe_subscription) = &subscr_defn.subscription {
                 if let Some(_subscription) = maybe_subscription.upgrade() {
                     maybe_channel = Some(subscr_defn.channel.clone());
@@ -1833,10 +2057,16 @@ impl DriverListener for ClientConductor {
 
         let mut linger_images: Option<Vec<Image>> = None;
 
-        if let Some(subscr_defn) = self.subscription_by_registration_id.get_mut(&subscription_registration_id) {
+        if let Some(subscr_defn) = self
+            .subscription_by_registration_id
+            .get_mut(&subscription_registration_id)
+        {
             if let Some(maybe_subscription) = &subscr_defn.subscription {
                 if let Some(subscription) = maybe_subscription.upgrade() {
-                    let subscriber_position = UnsafeBufferPosition::new(self.counter_values_buffer, subscriber_position_id);
+                    let subscriber_position = UnsafeBufferPosition::new(
+                        self.counter_values_buffer,
+                        subscriber_position_id,
+                    );
                     let image = Image::create(
                         session_id,
                         correlation_id,
@@ -1850,7 +2080,12 @@ impl DriverListener for ClientConductor {
                     let _callback_guard = CallbackGuard::new(&mut self.is_in_callback);
                     subscr_defn.on_available_image_handler.call(&image);
 
-                    linger_images = Some(subscription.lock().expect("Mutex poisoned").add_image(image));
+                    linger_images = Some(
+                        subscription
+                            .lock()
+                            .expect("Mutex poisoned")
+                            .add_image(image),
+                    );
                 }
             }
         }
@@ -1865,7 +2100,10 @@ impl DriverListener for ClientConductor {
 
         let mut linger_images: Option<Vec<Image>> = None;
 
-        if let Some(subscr_defn) = self.subscription_by_registration_id.get(&subscription_registration_id) {
+        if let Some(subscr_defn) = self
+            .subscription_by_registration_id
+            .get(&subscription_registration_id)
+        {
             log!(
                 trace,
                 "on_unavailable_image correlation_id {}, subscription_registration_id {}",
@@ -1876,13 +2114,17 @@ impl DriverListener for ClientConductor {
             if let Some(maybe_subscription) = &subscr_defn.subscription {
                 if let Some(subscription) = maybe_subscription.upgrade() {
                     // If Image was actually removed
-                    if let Some((old_image_array, index)) =
-                        subscription.lock().expect("Mutex poisoned").remove_image(correlation_id)
+                    if let Some((old_image_array, index)) = subscription
+                        .lock()
+                        .expect("Mutex poisoned")
+                        .remove_image(correlation_id)
                     {
                         let _callback_guard = CallbackGuard::new(&mut self.is_in_callback);
-                        subscr_defn
-                            .on_unavailable_image_handler
-                            .call(old_image_array.get(index as usize).expect("Bug in image handling"));
+                        subscr_defn.on_unavailable_image_handler.call(
+                            old_image_array
+                                .get(index as usize)
+                                .expect("Bug in image handling"),
+                        );
                         linger_images = Some(old_image_array);
                     }
                 }
@@ -1940,7 +2182,11 @@ impl DriverListener for ClientConductor {
 
     fn on_client_timeout(&mut self, client_id: i64) {
         if self.driver_proxy.client_id() == client_id && !self.is_closed() {
-            log!(trace, "on_client_timeout client_id {}. Closing all resources.", client_id,);
+            log!(
+                trace,
+                "on_client_timeout client_id {}. Closing all resources.",
+                client_id,
+            );
 
             self.close_all_resources((self.epoch_clock)());
             self.error_handler.call(AeronError::ClientTimeoutException);
@@ -1971,7 +2217,9 @@ mod tests {
 
     use crate::command::control_protocol_events::AeronCommand;
     use crate::command::counter_message_flyweight::CounterMessageFlyweight;
-    use crate::command::error_response_flyweight::{ERROR_CODE_GENERIC_ERROR, ERROR_CODE_INVALID_CHANNEL};
+    use crate::command::error_response_flyweight::{
+        ERROR_CODE_GENERIC_ERROR, ERROR_CODE_INVALID_CHANNEL,
+    };
     use crate::command::publication_message_flyweight::PublicationMessageFlyweight;
     use crate::command::remove_message_flyweight::RemoveMessageFlyweight;
     use crate::command::subscription_message_flyweight::SubscriptionMessageFlyweight;
@@ -2021,9 +2269,21 @@ mod tests {
         }
     }
 
-    fn on_new_publication_handler(_channel: CString, _stream_id: i32, _session_id: i32, _correlation_id: i64) {}
+    fn on_new_publication_handler(
+        _channel: CString,
+        _stream_id: i32,
+        _session_id: i32,
+        _correlation_id: i64,
+    ) {
+    }
 
-    fn on_new_exclusive_publication_handler(_channel: CString, _stream_id: i32, _session_id: i32, _correlation_id: i64) {}
+    fn on_new_exclusive_publication_handler(
+        _channel: CString,
+        _stream_id: i32,
+        _session_id: i32,
+        _correlation_id: i64,
+    ) {
+    }
 
     fn on_new_subscription_handler(_channel: CString, _stream_id: i32, _correlation_id: i64) {}
 
@@ -2031,9 +2291,19 @@ mod tests {
         println!("Got error: {:?}", err);
     }
 
-    fn on_available_counter_handler(_counters_reader: &CountersReader, _registration_id: i64, _counter_id: i32) {}
+    fn on_available_counter_handler(
+        _counters_reader: &CountersReader,
+        _registration_id: i64,
+        _counter_id: i32,
+    ) {
+    }
 
-    fn on_unavailable_counter_handler(_counters_reader: &CountersReader, _registration_id: i64, _counter_id: i32) {}
+    fn on_unavailable_counter_handler(
+        _counters_reader: &CountersReader,
+        _registration_id: i64,
+        _counter_id: i32,
+    ) {
+    }
 
     #[allow(dead_code)]
     struct ClientConductorTest {
@@ -2071,14 +2341,18 @@ mod tests {
             let mut logbuffer1 = MemoryMappedFile::create_new(&fname1, 0, LOG_FILE_LENGTH).unwrap();
             let mut logbuffer2 = MemoryMappedFile::create_new(&fname2, 0, LOG_FILE_LENGTH).unwrap();
 
-            let local_to_driver_ring_buffer =
-                Arc::new(ManyToOneRingBuffer::new(to_driver_buffer).expect("Failed to create RingBuffer"));
+            let local_to_driver_ring_buffer = Arc::new(
+                ManyToOneRingBuffer::new(to_driver_buffer).expect("Failed to create RingBuffer"),
+            );
             let local_to_clients_broadcast_receiver = Arc::new(Mutex::new(
-                BroadcastReceiver::new(to_clients_buffer).expect("Failed to create BroadcastReceiver"),
+                BroadcastReceiver::new(to_clients_buffer)
+                    .expect("Failed to create BroadcastReceiver"),
             ));
-            let local_driver_proxy = Arc::new(DriverProxy::new(local_to_driver_ring_buffer.clone()));
-            let local_copy_broadcast_receiver =
-                Arc::new(Mutex::new(CopyBroadcastReceiver::new(local_to_clients_broadcast_receiver)));
+            let local_driver_proxy =
+                Arc::new(DriverProxy::new(local_to_driver_ring_buffer.clone()));
+            let local_copy_broadcast_receiver = Arc::new(Mutex::new(CopyBroadcastReceiver::new(
+                local_to_clients_broadcast_receiver,
+            )));
 
             let local_conductor = ClientConductor::new(
                 unix_time_ms,
@@ -2126,7 +2400,9 @@ mod tests {
                 .conductor
                 .lock()
                 .unwrap()
-                .set_epoch_clock_provider(Box::new(move || cloned_curr_time.lock().unwrap().to_owned()));
+                .set_epoch_clock_provider(Box::new(move || {
+                    cloned_curr_time.lock().unwrap().to_owned()
+                }));
 
             // Now setup initial state
             instance
@@ -2143,24 +2419,26 @@ mod tests {
             // Init metadata inside the test files.
             unsafe {
                 let log_meta_data_buffer = AtomicBuffer::new(
-                    logbuffer1
-                        .memory_mut_ptr()
-                        .as_mut_ptr()
-                        .offset((LOG_FILE_LENGTH - log_buffer_descriptor::LOG_META_DATA_LENGTH) as isize),
+                    logbuffer1.memory_mut_ptr().as_mut_ptr().offset(
+                        (LOG_FILE_LENGTH - log_buffer_descriptor::LOG_META_DATA_LENGTH) as isize,
+                    ),
                     log_buffer_descriptor::LOG_META_DATA_LENGTH,
                 );
-                log_meta_data_buffer.put::<i32>(*log_buffer_descriptor::LOG_TERM_LENGTH_OFFSET, TERM_LENGTH);
-                log_meta_data_buffer.put::<i32>(*log_buffer_descriptor::LOG_PAGE_SIZE_OFFSET, PAGE_SIZE);
+                log_meta_data_buffer
+                    .put::<i32>(*log_buffer_descriptor::LOG_TERM_LENGTH_OFFSET, TERM_LENGTH);
+                log_meta_data_buffer
+                    .put::<i32>(*log_buffer_descriptor::LOG_PAGE_SIZE_OFFSET, PAGE_SIZE);
 
                 let log_meta_data_buffer2 = AtomicBuffer::new(
-                    logbuffer2
-                        .memory_mut_ptr()
-                        .as_mut_ptr()
-                        .offset((LOG_FILE_LENGTH - log_buffer_descriptor::LOG_META_DATA_LENGTH) as isize),
+                    logbuffer2.memory_mut_ptr().as_mut_ptr().offset(
+                        (LOG_FILE_LENGTH - log_buffer_descriptor::LOG_META_DATA_LENGTH) as isize,
+                    ),
                     log_buffer_descriptor::LOG_META_DATA_LENGTH,
                 );
-                log_meta_data_buffer2.put::<i32>(*log_buffer_descriptor::LOG_TERM_LENGTH_OFFSET, TERM_LENGTH);
-                log_meta_data_buffer2.put::<i32>(*log_buffer_descriptor::LOG_PAGE_SIZE_OFFSET, PAGE_SIZE);
+                log_meta_data_buffer2
+                    .put::<i32>(*log_buffer_descriptor::LOG_TERM_LENGTH_OFFSET, TERM_LENGTH);
+                log_meta_data_buffer2
+                    .put::<i32>(*log_buffer_descriptor::LOG_PAGE_SIZE_OFFSET, PAGE_SIZE);
             }
 
             instance
@@ -2285,7 +2563,9 @@ mod tests {
             .expect("failed to add publication");
 
         // Read and process all messages seen in to_driver buffer
-        let _count = test.many_to_one_ring_buffer.read(|_msg_type_id, _buffer| {}, 1000);
+        let _count = test
+            .many_to_one_ring_buffer
+            .read(|_msg_type_id, _buffer| {}, 1000);
 
         // In production this will be called when new publication comes from driver. Adds this publication in to internal map.
         test.conductor.lock().unwrap().on_new_publication(
@@ -2431,7 +2711,11 @@ mod tests {
     fn should_return_null_for_unknown_exclusive_publication() {
         let test = ClientConductorTest::new();
 
-        let publication = test.conductor.lock().unwrap().find_exclusive_publication(100);
+        let publication = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_exclusive_publication(100);
 
         assert!(publication.is_err());
     }
@@ -2447,7 +2731,11 @@ mod tests {
             .add_exclusive_publication(str_to_c(CHANNEL), STREAM_ID)
             .expect("failed to add publication");
 
-        let publication = test.conductor.lock().unwrap().find_exclusive_publication(id);
+        let publication = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_exclusive_publication(id);
 
         assert!(publication.is_err());
     }
@@ -2499,7 +2787,12 @@ mod tests {
             str_to_c(&test.log_file_name),
         );
 
-        let publication = test.conductor.lock().unwrap().find_exclusive_publication(id).unwrap();
+        let publication = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_exclusive_publication(id)
+            .unwrap();
         let publication = publication.lock().unwrap();
 
         assert_eq!(publication.registration_id(), id);
@@ -2519,7 +2812,9 @@ mod tests {
             .add_exclusive_publication(str_to_c(CHANNEL), STREAM_ID)
             .expect("failed to add publication");
 
-        let _count = test.many_to_one_ring_buffer.read(|_msg_type_id, _buffer| {}, 1000);
+        let _count = test
+            .many_to_one_ring_buffer
+            .read(|_msg_type_id, _buffer| {}, 1000);
 
         test.conductor.lock().unwrap().on_new_exclusive_publication(
             id,
@@ -2532,7 +2827,11 @@ mod tests {
         );
 
         {
-            let publication = test.conductor.lock().unwrap().find_exclusive_publication(id);
+            let publication = test
+                .conductor
+                .lock()
+                .unwrap()
+                .find_exclusive_publication(id);
 
             assert!(publication.is_ok());
         }
@@ -2549,7 +2848,11 @@ mod tests {
 
         assert_eq!(count, 1);
 
-        let publication_post = test.conductor.lock().unwrap().find_exclusive_publication(id);
+        let publication_post = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_exclusive_publication(id);
         assert!(publication_post.is_err());
     }
 
@@ -2593,8 +2896,16 @@ mod tests {
             str_to_c(&test.log_file_name),
         );
 
-        let publication1 = test.conductor.lock().unwrap().find_exclusive_publication(id);
-        let publication2 = test.conductor.lock().unwrap().find_exclusive_publication(id);
+        let publication1 = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_exclusive_publication(id);
+        let publication2 = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_exclusive_publication(id);
 
         assert!(publication1.is_ok());
         assert!(publication2.is_ok());
@@ -2622,7 +2933,11 @@ mod tests {
             str_to_c(&test.log_file_name),
         );
 
-        let publication = test.conductor.lock().unwrap().find_exclusive_publication(id);
+        let publication = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_exclusive_publication(id);
 
         assert!(publication.is_err());
     }
@@ -2643,7 +2958,11 @@ mod tests {
             .unwrap()
             .set_epoch_clock_provider(Box::new(driver_timeout_provider));
 
-        let publication = test.conductor.lock().unwrap().find_exclusive_publication(id);
+        let publication = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_exclusive_publication(id);
 
         assert_that!(
             &publication.err().unwrap(),
@@ -2668,7 +2987,11 @@ mod tests {
             CString::new("invalid channel").unwrap(),
         );
 
-        let publication = test.conductor.lock().unwrap().find_exclusive_publication(id);
+        let publication = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_exclusive_publication(id);
         assert_that!(
             &publication.err().unwrap(),
             has_structure!(AeronError::RegistrationException[any_value(), any_value()])
@@ -2763,7 +3086,12 @@ mod tests {
             .unwrap()
             .on_subscription_ready(id, CHANNEL_STATUS_INDICATOR_ID);
 
-        let result = test.conductor.lock().unwrap().find_subscription(id).expect("Not found");
+        let result = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_subscription(id)
+            .expect("Not found");
 
         let subscription = result.lock().expect("Mutex poisoned");
 
@@ -2788,7 +3116,9 @@ mod tests {
             )
             .unwrap();
 
-        let _count = test.many_to_one_ring_buffer.read(|_msg_type_id, _buffer| {}, 1000);
+        let _count = test
+            .many_to_one_ring_buffer
+            .read(|_msg_type_id, _buffer| {}, 1000);
 
         test.conductor
             .lock()
@@ -2872,7 +3202,10 @@ mod tests {
 
         assert!(subscription1.is_ok());
         assert!(subscription2.is_ok());
-        assert!(Arc::ptr_eq(&subscription1.unwrap(), &subscription2.unwrap()));
+        assert!(Arc::ptr_eq(
+            &subscription1.unwrap(),
+            &subscription2.unwrap()
+        ));
     }
 
     #[test]
@@ -2916,7 +3249,10 @@ mod tests {
 
         assert!(subscription1.is_ok());
         assert!(subscription2.is_ok());
-        assert!(!Arc::ptr_eq(&subscription1.unwrap(), &subscription2.unwrap()));
+        assert!(!Arc::ptr_eq(
+            &subscription1.unwrap(),
+            &subscription2.unwrap()
+        ));
     }
 
     #[test]
@@ -2990,10 +3326,11 @@ mod tests {
             )
             .unwrap();
 
-        test.conductor
-            .lock()
-            .unwrap()
-            .on_error_response(id, ERROR_CODE_INVALID_CHANNEL, str_to_c("invalid channel"));
+        test.conductor.lock().unwrap().on_error_response(
+            id,
+            ERROR_CODE_INVALID_CHANNEL,
+            str_to_c("invalid channel"),
+        );
 
         let subscription = test.conductor.lock().unwrap().find_subscription(id);
 
@@ -3020,7 +3357,10 @@ mod tests {
     fn should_call_error_handler_when_inter_service_timeout_exceeded() {
         let test = ClientConductorTest::new();
 
-        test.conductor.lock().unwrap().set_error_handler(Box::new(error_handler1));
+        test.conductor
+            .lock()
+            .unwrap()
+            .set_error_handler(Box::new(error_handler1));
         test.conductor
             .lock()
             .unwrap()
@@ -3033,13 +3373,19 @@ mod tests {
     #[allow(dead_code)]
     fn error_handler2(error: AeronError) {
         ERR_HANDLER_CALLED2.store(true, Ordering::SeqCst);
-        assert_that!(&error, has_structure!(AeronError::DriverTimeout[any_value()]));
+        assert_that!(
+            &error,
+            has_structure!(AeronError::DriverTimeout[any_value()])
+        );
         println!("It was called");
     }
 
     fn error_handler3(error: AeronError) {
         ERR_HANDLER_CALLED3.store(true, Ordering::SeqCst);
-        assert_that!(&error, has_structure!(AeronError::DriverTimeout[any_value()]));
+        assert_that!(
+            &error,
+            has_structure!(AeronError::DriverTimeout[any_value()])
+        );
     }
 
     lazy_static! {
@@ -3050,7 +3396,10 @@ mod tests {
     fn should_call_error_handler_when_driver_inactive_on_idle() {
         let mut test = ClientConductorTest::new();
 
-        test.conductor.lock().unwrap().set_error_handler(Box::new(error_handler3));
+        test.conductor
+            .lock()
+            .unwrap()
+            .set_error_handler(Box::new(error_handler3));
 
         test.do_work_until_driver_timeout();
 
@@ -3060,7 +3409,10 @@ mod tests {
 
     fn error_handler4(error: AeronError) {
         ERR_HANDLER_CALLED4.store(true, Ordering::SeqCst);
-        assert_that!(&error, has_structure!(AeronError::DriverTimeout[any_value()]));
+        assert_that!(
+            &error,
+            has_structure!(AeronError::DriverTimeout[any_value()])
+        );
     }
 
     lazy_static! {
@@ -3071,21 +3423,34 @@ mod tests {
     fn should_exception_when_add_publication_after_driver_inactive() {
         let mut test = ClientConductorTest::new();
 
-        test.conductor.lock().unwrap().set_error_handler(Box::new(error_handler4));
+        test.conductor
+            .lock()
+            .unwrap()
+            .set_error_handler(Box::new(error_handler4));
 
         test.do_work_until_driver_timeout();
 
         let called: bool = ERR_HANDLER_CALLED4.load(Ordering::SeqCst);
         assert!(called);
 
-        let result = test.conductor.lock().unwrap().add_publication(str_to_c(CHANNEL), STREAM_ID);
+        let result = test
+            .conductor
+            .lock()
+            .unwrap()
+            .add_publication(str_to_c(CHANNEL), STREAM_ID);
 
-        assert_that!(&result.err().unwrap(), has_structure!(AeronError::DriverTimeout[any_value()]));
+        assert_that!(
+            &result.err().unwrap(),
+            has_structure!(AeronError::DriverTimeout[any_value()])
+        );
     }
 
     fn error_handler5(error: AeronError) {
         ERR_HANDLER_CALLED5.store(true, Ordering::SeqCst);
-        assert_that!(&error, has_structure!(AeronError::DriverTimeout[any_value()]));
+        assert_that!(
+            &error,
+            has_structure!(AeronError::DriverTimeout[any_value()])
+        );
     }
 
     lazy_static! {
@@ -3096,7 +3461,10 @@ mod tests {
     fn should_exception_when_release_publication_after_driver_inactive() {
         let mut test = ClientConductorTest::new();
 
-        test.conductor.lock().unwrap().set_error_handler(Box::new(error_handler5));
+        test.conductor
+            .lock()
+            .unwrap()
+            .set_error_handler(Box::new(error_handler5));
 
         test.do_work_until_driver_timeout();
         let called: bool = ERR_HANDLER_CALLED5.load(Ordering::SeqCst);
@@ -3109,7 +3477,10 @@ mod tests {
 
     fn error_handler6(error: AeronError) {
         ERR_HANDLER_CALLED6.store(true, Ordering::SeqCst);
-        assert_that!(&error, has_structure!(AeronError::DriverTimeout[any_value()]));
+        assert_that!(
+            &error,
+            has_structure!(AeronError::DriverTimeout[any_value()])
+        );
     }
 
     lazy_static! {
@@ -3120,7 +3491,10 @@ mod tests {
     fn should_exception_when_add_subscription_after_driver_inactive() {
         let mut test = ClientConductorTest::new();
 
-        test.conductor.lock().unwrap().set_error_handler(Box::new(error_handler6));
+        test.conductor
+            .lock()
+            .unwrap()
+            .set_error_handler(Box::new(error_handler6));
 
         test.do_work_until_driver_timeout();
         let called: bool = ERR_HANDLER_CALLED6.load(Ordering::SeqCst);
@@ -3132,7 +3506,10 @@ mod tests {
             Box::new(on_available_image_handler),
             Box::new(on_unavailable_image_handler),
         );
-        assert_that!(&result.err().unwrap(), has_structure!(AeronError::DriverTimeout[any_value()]));
+        assert_that!(
+            &result.err().unwrap(),
+            has_structure!(AeronError::DriverTimeout[any_value()])
+        );
     }
 
     lazy_static! {
@@ -3143,20 +3520,38 @@ mod tests {
     fn should_exception_when_release_subscription_after_driver_inactive() {
         let mut test = ClientConductorTest::new();
 
-        test.conductor.lock().unwrap().set_error_handler(Box::new(|error| {
-            ERR_HANDLER_CALLED7.store(true, Ordering::SeqCst);
-            assert_that!(&error, has_structure!(AeronError::DriverTimeout[any_value()]));
-        }));
+        test.conductor
+            .lock()
+            .unwrap()
+            .set_error_handler(Box::new(|error| {
+                ERR_HANDLER_CALLED7.store(true, Ordering::SeqCst);
+                assert_that!(
+                    &error,
+                    has_structure!(AeronError::DriverTimeout[any_value()])
+                );
+            }));
 
         test.do_work_until_driver_timeout();
         let called: bool = ERR_HANDLER_CALLED7.load(Ordering::SeqCst);
         assert!(called);
 
-        let result = test.conductor.lock().unwrap().release_subscription(100, Vec::<Image>::new());
-        assert_that!(&result.err().unwrap(), has_structure!(AeronError::Generic[any_value()]));
+        let result = test
+            .conductor
+            .lock()
+            .unwrap()
+            .release_subscription(100, Vec::<Image>::new());
+        assert_that!(
+            &result.err().unwrap(),
+            has_structure!(AeronError::Generic[any_value()])
+        );
     }
 
-    fn on_new_publication_handler1(channel: CString, stream_id: i32, session_id: i32, correlation_id: i64) {
+    fn on_new_publication_handler1(
+        channel: CString,
+        stream_id: i32,
+        session_id: i32,
+        correlation_id: i64,
+    ) {
         ON_NEW_PUB_CALLED.store(true, Ordering::SeqCst);
         assert_eq!(channel, str_to_c(CHANNEL));
         assert_eq!(stream_id, STREAM_ID);
@@ -3294,7 +3689,11 @@ mod tests {
 
         let subscription = test.conductor.lock().unwrap().find_subscription(id);
         assert!(subscription.is_ok());
-        assert!(subscription.unwrap().lock().unwrap().has_image(correlation_id));
+        assert!(subscription
+            .unwrap()
+            .lock()
+            .unwrap()
+            .has_image(correlation_id));
 
         let sub_called: bool = ON_NEW_SUB_CALLED2.load(Ordering::SeqCst);
         assert!(sub_called);
@@ -3411,7 +3810,11 @@ mod tests {
 
         let subscription = test.conductor.lock().unwrap().find_subscription(id);
         assert!(subscription.is_ok());
-        assert!(!subscription.unwrap().lock().unwrap().has_image(correlation_id));
+        assert!(!subscription
+            .unwrap()
+            .lock()
+            .unwrap()
+            .has_image(correlation_id));
 
         let sub_called: bool = ON_NEW_SUB_CALLED4.load(Ordering::SeqCst);
         assert!(sub_called);
@@ -3474,8 +3877,15 @@ mod tests {
             str_to_c(&test.log_file_name),
             str_to_c(SOURCE_IDENTITY),
         );
-        test.conductor.lock().unwrap().on_unavailable_image(correlation_id, id);
-        assert!(!subscription.unwrap().lock().unwrap().has_image(correlation_id));
+        test.conductor
+            .lock()
+            .unwrap()
+            .on_unavailable_image(correlation_id, id);
+        assert!(!subscription
+            .unwrap()
+            .lock()
+            .unwrap()
+            .has_image(correlation_id));
 
         let sub_called: bool = ON_NEW_SUB_CALLED5.load(Ordering::SeqCst);
         assert!(sub_called);
@@ -3536,7 +3946,10 @@ mod tests {
             str_to_c(&test.log_file_name),
             str_to_c(SOURCE_IDENTITY),
         );
-        test.conductor.lock().unwrap().on_unavailable_image(correlation_id, id);
+        test.conductor
+            .lock()
+            .unwrap()
+            .on_unavailable_image(correlation_id, id);
 
         let sub_called: bool = ON_NEW_SUB_CALLED6.load(Ordering::SeqCst);
         assert!(!sub_called);
@@ -3601,7 +4014,10 @@ mod tests {
             str_to_c(&test.log_file_name),
             str_to_c(SOURCE_IDENTITY),
         );
-        test.conductor.lock().unwrap().on_unavailable_image(correlation_id + 1, id);
+        test.conductor
+            .lock()
+            .unwrap()
+            .on_unavailable_image(correlation_id + 1, id);
 
         let sub_called: bool = ON_NEW_SUB_CALLED7.load(Ordering::SeqCst);
         assert!(sub_called);
@@ -3610,7 +4026,11 @@ mod tests {
         let un_img_called: bool = ON_INACTIVE_CALLED7.load(Ordering::SeqCst);
         assert!(!un_img_called);
 
-        assert!(subscription.unwrap().lock().unwrap().has_image(correlation_id));
+        assert!(subscription
+            .unwrap()
+            .lock()
+            .unwrap()
+            .has_image(correlation_id));
     }
 
     fn on_new_subscription_handler8(channel: CString, stream_id: i32, correlation_id: i64) {
@@ -3670,7 +4090,11 @@ mod tests {
                 str_to_c(&test.log_file_name),
                 str_to_c(SOURCE_IDENTITY),
             );
-            assert!(subscription.unwrap().lock().unwrap().has_image(correlation_id));
+            assert!(subscription
+                .unwrap()
+                .lock()
+                .unwrap()
+                .has_image(correlation_id));
         }
 
         let sub_called: bool = ON_NEW_SUB_CALLED8.load(Ordering::SeqCst);
@@ -3734,7 +4158,11 @@ mod tests {
             str_to_c(&test.log_file_name),
         );
 
-        let publication = test.conductor.lock().unwrap().find_exclusive_publication(id);
+        let publication = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_exclusive_publication(id);
 
         assert!(publication.is_ok());
 
@@ -3837,7 +4265,11 @@ mod tests {
 
         assert!(subscription.is_ok());
 
-        let ex_pub = test.conductor.lock().unwrap().find_exclusive_publication(ex_pub_id);
+        let ex_pub = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_exclusive_publication(ex_pub_id);
 
         assert!(ex_pub.is_ok());
 
@@ -3872,7 +4304,12 @@ mod tests {
             .unwrap()
             .on_subscription_ready(id, CHANNEL_STATUS_INDICATOR_ID);
 
-        let sub = test.conductor.lock().unwrap().find_subscription(id).unwrap();
+        let sub = test
+            .conductor
+            .lock()
+            .unwrap()
+            .find_subscription(id)
+            .unwrap();
 
         test.conductor.lock().unwrap().on_available_image(
             correlation_id,
@@ -3902,7 +4339,10 @@ mod tests {
     #[test]
     fn should_return_null_for_unknown_counter() {
         let test = ClientConductorTest::new();
-        let mut conductor = test.conductor.lock().expect("Mutex on conductor is poisoned!");
+        let mut conductor = test
+            .conductor
+            .lock()
+            .expect("Mutex on conductor is poisoned!");
         let counter = conductor.find_counter(100);
 
         assert!(counter.is_err());
@@ -3953,7 +4393,11 @@ mod tests {
         assert_eq!(count, 1);
     }
 
-    fn on_available_counter1(_counters_reader: &CountersReader, _registration_id: i64, _counter_id: i32) {
+    fn on_available_counter1(
+        _counters_reader: &CountersReader,
+        _registration_id: i64,
+        _counter_id: i32,
+    ) {
         ON_AV_COUNTER_CALLED1.store(true, Ordering::SeqCst);
     }
 
@@ -3978,7 +4422,10 @@ mod tests {
             .add_counter(COUNTER_TYPE_ID, &no_key_buffer, COUNTER_LABEL)
             .unwrap();
 
-        test.conductor.lock().unwrap().on_available_counter(id, COUNTER_ID);
+        test.conductor
+            .lock()
+            .unwrap()
+            .on_available_counter(id, COUNTER_ID);
 
         let counter = test.conductor.lock().unwrap().find_counter(id).unwrap();
 
@@ -4001,9 +4448,14 @@ mod tests {
             .add_counter(COUNTER_TYPE_ID, &no_key_buffer, COUNTER_LABEL)
             .unwrap();
 
-        let _count = test.many_to_one_ring_buffer.read(|_msg_type_id, _buffer| {}, 1000);
+        let _count = test
+            .many_to_one_ring_buffer
+            .read(|_msg_type_id, _buffer| {}, 1000);
 
-        test.conductor.lock().unwrap().on_available_counter(id, COUNTER_ID);
+        test.conductor
+            .lock()
+            .unwrap()
+            .on_available_counter(id, COUNTER_ID);
 
         {
             let counter = test.conductor.lock().unwrap().find_counter(id);
@@ -4060,7 +4512,10 @@ mod tests {
             .add_counter(COUNTER_TYPE_ID, &no_key_buffer, COUNTER_LABEL)
             .unwrap();
 
-        test.conductor.lock().unwrap().on_available_counter(id, COUNTER_ID);
+        test.conductor
+            .lock()
+            .unwrap()
+            .on_available_counter(id, COUNTER_ID);
 
         let counter1 = test.conductor.lock().unwrap().find_counter(id).unwrap();
         let counter2 = test.conductor.lock().unwrap().find_counter(id).unwrap();
@@ -4068,14 +4523,19 @@ mod tests {
         assert!(Arc::ptr_eq(&counter1, &counter2));
     }
 
-    fn on_available_counter2(_counters_reader: &CountersReader, _registration_id: i64, _counter_id: i32) {
+    fn on_available_counter2(
+        _counters_reader: &CountersReader,
+        _registration_id: i64,
+        _counter_id: i32,
+    ) {
         let mut val = ON_AV_COUNTER_CALLED2.load(Ordering::SeqCst);
         val += 1;
         ON_AV_COUNTER_CALLED2.store(val, Ordering::SeqCst);
     }
 
     lazy_static! {
-        pub static ref ON_AV_COUNTER_CALLED2: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::from(0);
+        pub static ref ON_AV_COUNTER_CALLED2: std::sync::atomic::AtomicI32 =
+            std::sync::atomic::AtomicI32::from(0);
     }
 
     #[test]
@@ -4100,8 +4560,14 @@ mod tests {
             .lock()
             .unwrap()
             .add_on_available_counter_handler(Box::new(on_available_counter2));
-        test.conductor.lock().unwrap().on_available_counter(id1, COUNTER_ID);
-        test.conductor.lock().unwrap().on_available_counter(id2, COUNTER_ID);
+        test.conductor
+            .lock()
+            .unwrap()
+            .on_available_counter(id1, COUNTER_ID);
+        test.conductor
+            .lock()
+            .unwrap()
+            .on_available_counter(id2, COUNTER_ID);
 
         let counter1 = test.conductor.lock().unwrap().find_counter(id1).unwrap();
         let counter2 = test.conductor.lock().unwrap().find_counter(id2).unwrap();
@@ -4124,7 +4590,10 @@ mod tests {
             .add_counter(COUNTER_TYPE_ID, &no_key_buffer, COUNTER_LABEL)
             .unwrap();
 
-        test.conductor.lock().unwrap().on_available_counter(id + 1, COUNTER_ID);
+        test.conductor
+            .lock()
+            .unwrap()
+            .on_available_counter(id + 1, COUNTER_ID);
 
         let counter = test.conductor.lock().unwrap().find_counter(id);
 
@@ -4168,10 +4637,11 @@ mod tests {
             .add_counter(COUNTER_TYPE_ID, &no_key_buffer, COUNTER_LABEL)
             .unwrap();
 
-        test.conductor
-            .lock()
-            .unwrap()
-            .on_error_response(id, ERROR_CODE_GENERIC_ERROR, str_to_c("can't add counter"));
+        test.conductor.lock().unwrap().on_error_response(
+            id,
+            ERROR_CODE_GENERIC_ERROR,
+            str_to_c("can't add counter"),
+        );
 
         let counter = test.conductor.lock().unwrap().find_counter(id);
 
@@ -4181,14 +4651,19 @@ mod tests {
         );
     }
 
-    fn on_unavailable_counter1(_counters_reader: &CountersReader, _registration_id: i64, _counter_id: i32) {
+    fn on_unavailable_counter1(
+        _counters_reader: &CountersReader,
+        _registration_id: i64,
+        _counter_id: i32,
+    ) {
         let mut val = ON_UNAV_COUNTER_CALLED1.load(Ordering::SeqCst);
         val += 1;
         ON_UNAV_COUNTER_CALLED1.store(val, Ordering::SeqCst);
     }
 
     lazy_static! {
-        pub static ref ON_UNAV_COUNTER_CALLED1: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::from(0);
+        pub static ref ON_UNAV_COUNTER_CALLED1: std::sync::atomic::AtomicI32 =
+            std::sync::atomic::AtomicI32::from(0);
     }
 
     #[test]
@@ -4201,7 +4676,10 @@ mod tests {
             .unwrap()
             .add_on_unavailable_counter_handler(Box::new(on_unavailable_counter1));
 
-        test.conductor.lock().unwrap().on_unavailable_counter(id, COUNTER_ID);
+        test.conductor
+            .lock()
+            .unwrap()
+            .on_unavailable_counter(id, COUNTER_ID);
 
         let val = ON_UNAV_COUNTER_CALLED1.load(Ordering::SeqCst);
         assert_eq!(val, 1);

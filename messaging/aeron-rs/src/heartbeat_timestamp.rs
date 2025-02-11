@@ -55,9 +55,14 @@ pub fn find_counter_id_by_registration_id(
     let buffer = counters_reader.meta_data_buffer();
 
     for i in 0..counters_reader.max_counter_id() {
-        if counters_reader.counter_state(i).expect("Error getting counter state") == counters::RECORD_ALLOCATED {
+        if counters_reader
+            .counter_state(i)
+            .expect("Error getting counter state")
+            == counters::RECORD_ALLOCATED
+        {
             let record_offset = CountersReader::metadata_offset(i);
-            let key = buffer.get::<HeartbeatTimestampKeyDefn>(record_offset + *counters::KEY_OFFSET);
+            let key =
+                buffer.get::<HeartbeatTimestampKeyDefn>(record_offset + *counters::KEY_OFFSET);
 
             if registration_id == key.registration_id
                 && buffer.get::<i32>(record_offset + *counters::TYPE_ID_OFFSET) == counter_type_id
@@ -79,7 +84,12 @@ pub fn find_counter_id_by_registration_id(
  * @param registration_id to match the entity key.
  * @return true if the counter is still active otherwise false.
  */
-pub fn is_active(counters_reader: &CountersReader, counter_id: i32, counter_type_id: i32, registration_id: i64) -> bool {
+pub fn is_active(
+    counters_reader: &CountersReader,
+    counter_id: i32,
+    counter_type_id: i32,
+    registration_id: i64,
+) -> bool {
     let buffer = counters_reader.meta_data_buffer();
     let record_offset = CountersReader::metadata_offset(counter_id);
     let key = buffer.get::<HeartbeatTimestampKeyDefn>(record_offset + *counters::KEY_OFFSET);

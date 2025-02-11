@@ -54,7 +54,9 @@ pub fn msg_offset(record_offset: Index) -> Index {
 
 pub fn check_msg_type_id(msg_type_id: i32) -> Result<(), BroadcastTransmitError> {
     if msg_type_id < 1 {
-        return Err(BroadcastTransmitError::MessageIdShouldBeGreaterThenZero(msg_type_id));
+        return Err(BroadcastTransmitError::MessageIdShouldBeGreaterThenZero(
+            msg_type_id,
+        ));
     }
 
     Ok(())

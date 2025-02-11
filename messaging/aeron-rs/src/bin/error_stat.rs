@@ -68,13 +68,18 @@ fn main() {
 
     let distinct_error_count = error_log_reader::read(
         error_buffer,
-        |observation_count, first_observation_timestamp, last_observation_timestamp, encoded_exception| {
+        |observation_count,
+         first_observation_timestamp,
+         last_observation_timestamp,
+         encoded_exception| {
             println!(
                 "***\n{} observations from {} to {} for:\n{}\n",
                 observation_count,
                 format_date(first_observation_timestamp),
                 format_date(last_observation_timestamp),
-                encoded_exception.into_string().expect("Cannot convert exception")
+                encoded_exception
+                    .into_string()
+                    .expect("Cannot convert exception")
             );
         },
         0,

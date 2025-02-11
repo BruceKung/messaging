@@ -30,7 +30,9 @@ use crate::{
         publication_buffers_ready_flyweight::*,
         subscription_ready_flyweight::SubscriptionReadyFlyweight,
     },
-    concurrent::{atomic_buffer::AtomicBuffer, broadcast::copy_broadcast_receiver::CopyBroadcastReceiver},
+    concurrent::{
+        atomic_buffer::AtomicBuffer, broadcast::copy_broadcast_receiver::CopyBroadcastReceiver,
+    },
     log,
     utils::{errors::AeronError, types::Index},
 };
@@ -64,9 +66,18 @@ pub trait DriverListener {
 
     fn on_operation_success(&mut self, correlation_id: i64);
 
-    fn on_channel_endpoint_error_response(&mut self, offending_command_correlation_id: i64, error_message: CString);
+    fn on_channel_endpoint_error_response(
+        &mut self,
+        offending_command_correlation_id: i64,
+        error_message: CString,
+    );
 
-    fn on_error_response(&mut self, offending_command_correlation_id: i64, error_code: i32, error_message: CString);
+    fn on_error_response(
+        &mut self,
+        offending_command_correlation_id: i64,
+        error_code: i32,
+        error_message: CString,
+    );
 
     fn on_available_image(
         &mut self,
@@ -94,15 +105,24 @@ pub struct DriverListenerAdapter<T: DriverListener> {
 }
 
 impl<T: DriverListener> DriverListenerAdapter<T> {
-    pub fn new(broadcast_receiver: Arc<Mutex<CopyBroadcastReceiver>>, driver_listener: Arc<Mutex<T>>) -> Self {
+    pub fn new(
+        broadcast_receiver: Arc<Mutex<CopyBroadcastReceiver>>,
+        driver_listener: Arc<Mutex<T>>,
+    ) -> Self {
         Self {
             broadcast_receiver,
             driver_listener,
         }
     }
 
-    pub fn receive_messages(&self, this_driver_listener: &mut ClientConductor) -> Result<usize, AeronError> {
-        let receive_handler = |msg: AeronCommand, buffer: AtomicBuffer, offset: Index, _length: Index| {
+    pub fn receive_messages(
+        &self,
+        this_driver_listener: &mut ClientConductor,
+    ) -> Result<usize, AeronError> {
+        let receive_handler = |msg: AeronCommand,
+                               buffer: AtomicBuffer,
+                               offset: Index,
+                               _length: Index| {
             log!(trace, "Message arrived of type {:x}", msg as i32);
 
             match msg {
@@ -160,8 +180,10 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
                 AeronCommand::ResponseOnUnavailableImage => {
                     let image_message = ImageMessageFlyweight::new(buffer, offset);
 
-                    this_driver_listener
-                        .on_unavailable_image(image_message.correlation_id(), image_message.subscription_registration_id());
+                    this_driver_listener.on_unavailable_image(
+                        image_message.correlation_id(),
+                        image_message.subscription_registration_id(),
+                    );
                 }
                 AeronCommand::ResponseOnError => {
                     let error_response = ErrorResponseFlyweight::new(buffer, offset);
@@ -183,11 +205,13 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
                 }
                 AeronCommand::ResponseOnCounterReady => {
                     let response = CounterUpdateFlyweight::new(buffer, offset);
-                    this_driver_listener.on_available_counter(response.correlation_id(), response.counter_id());
+                    this_driver_listener
+                        .on_available_counter(response.correlation_id(), response.counter_id());
                 }
                 AeronCommand::ResponseOnUnavailableCounter => {
                     let response = CounterUpdateFlyweight::new(buffer, offset);
-                    this_driver_listener.on_unavailable_counter(response.correlation_id(), response.counter_id());
+                    this_driver_listener
+                        .on_unavailable_counter(response.correlation_id(), response.counter_id());
                 }
                 AeronCommand::ResponseOnClientTimeout => {
                     let response = ClientTimeoutFlyweight::new(buffer, offset);

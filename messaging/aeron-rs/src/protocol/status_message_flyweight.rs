@@ -66,7 +66,9 @@ pub struct StatusMessageFlyweight {
 impl StatusMessageFlyweight {
     pub fn new(buffer: AtomicBuffer, offset: Index) -> Self {
         let header_flyweight = HeaderFlyweight::new(buffer, offset);
-        let m_struct = header_flyweight.flyweight.overlay_struct::<StatusMessageDefn>(0);
+        let m_struct = header_flyweight
+            .flyweight
+            .overlay_struct::<StatusMessageDefn>(0);
         Self {
             header_flyweight,
             m_struct,

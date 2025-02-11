@@ -140,7 +140,11 @@ impl fmt::Debug for CounterMetaDataDefn {
         }
         write!(f, "\"\n    label=\"")?;
         for ch in label.val.iter() {
-            write!(f, "{}", String::from_utf8_lossy(std::slice::from_ref::<u8>(ch)))?;
+            write!(
+                f,
+                "{}",
+                String::from_utf8_lossy(std::slice::from_ref::<u8>(ch))
+            )?;
         }
         write!(f, "\" \n}}")?;
         Ok(())
@@ -148,8 +152,10 @@ impl fmt::Debug for CounterMetaDataDefn {
 }
 
 lazy_static! {
-    pub static ref FREE_TO_REUSE_DEADLINE_OFFSET: Index = offset_of!(CounterMetaDataDefn, free_to_reuse_deadline) as Index;
-    pub static ref LABEL_LENGTH_OFFSET: Index = offset_of!(CounterMetaDataDefn, label_length) as Index;
+    pub static ref FREE_TO_REUSE_DEADLINE_OFFSET: Index =
+        offset_of!(CounterMetaDataDefn, free_to_reuse_deadline) as Index;
+    pub static ref LABEL_LENGTH_OFFSET: Index =
+        offset_of!(CounterMetaDataDefn, label_length) as Index;
     pub static ref KEY_OFFSET: Index = offset_of!(CounterMetaDataDefn, key) as Index;
     pub static ref TYPE_ID_OFFSET: Index = offset_of!(CounterMetaDataDefn, type_id) as Index;
 }
@@ -181,11 +187,17 @@ impl CountersReader {
             if record_status == RECORD_UNUSED {
                 break;
             } else if record_status == RECORD_ALLOCATED {
-                let record = self.metadata_buffer.overlay_struct::<CounterMetaDataDefn>(i);
+                let record = self
+                    .metadata_buffer
+                    .overlay_struct::<CounterMetaDataDefn>(i);
 
                 let label = self.metadata_buffer.get_string(i + *LABEL_LENGTH_OFFSET);
                 let key_buffer = AtomicBuffer::new(
-                    unsafe { self.metadata_buffer.buffer().offset((i + *KEY_OFFSET) as isize) },
+                    unsafe {
+                        self.metadata_buffer
+                            .buffer()
+                            .offset((i + *KEY_OFFSET) as isize)
+                    },
                     std::mem::size_of::<CounterMetaDataKey>() as i32,
                 );
 
@@ -200,12 +212,16 @@ impl CountersReader {
 
     pub fn counter_value(&self, id: i32) -> Result<u64, AeronError> {
         self.validate_counter_id(id)?;
-        Ok(self.values_buffer.get_volatile::<u64>(Self::counter_offset(id)))
+        Ok(self
+            .values_buffer
+            .get_volatile::<u64>(Self::counter_offset(id)))
     }
 
     pub fn counter_state(&self, id: i32) -> Result<i32, AeronError> {
         self.validate_counter_id(id)?;
-        Ok(self.metadata_buffer.get_volatile::<i32>(Self::metadata_offset(id)))
+        Ok(self
+            .metadata_buffer
+            .get_volatile::<i32>(Self::metadata_offset(id)))
     }
 
     pub fn free_to_reuse_deadline(&self, id: i32) -> Result<u64, AeronError> {
@@ -254,7 +270,10 @@ impl CountersReader {
     }
 
     pub fn iter(&self) -> CountersReaderIter {
-        CountersReaderIter { inner: self, pos: 0 }
+        CountersReaderIter {
+            inner: self,
+            pos: 0,
+        }
     }
 }
 
@@ -284,15 +303,24 @@ impl<'a> Iterator for CountersReaderIter<'a> {
 
         self.pos += 1;
 
-        let record_status = self.inner.metadata_buffer.get_volatile::<i32>(next_metadata_pos);
+        let record_status = self
+            .inner
+            .metadata_buffer
+            .get_volatile::<i32>(next_metadata_pos);
 
         match record_status {
             RECORD_UNUSED | RECORD_RECLAIMED => None,
             RECORD_ALLOCATED => {
-                let ret = self.inner.metadata_buffer.as_ref::<CounterMetaDataDefn>(next_metadata_pos);
+                let ret = self
+                    .inner
+                    .metadata_buffer
+                    .as_ref::<CounterMetaDataDefn>(next_metadata_pos);
                 Some(ret)
             }
-            _ => unreachable!("CountersReaderIter::next: unknown record status {}", record_status),
+            _ => unreachable!(
+                "CountersReaderIter::next: unknown record status {}",
+                record_status
+            ),
         }
     }
 }
@@ -377,13 +405,18 @@ impl CountersManager {
         let record_offset = CountersReader::metadata_offset(counter_id);
         self.check_meta_data_capacity(record_offset)?;
 
-        let mut record = self.reader.metadata_buffer.get::<CounterMetaDataDefn>(record_offset);
+        let mut record = self
+            .reader
+            .metadata_buffer
+            .get::<CounterMetaDataDefn>(record_offset);
 
         record.type_id = type_id;
         record.free_to_reuse_deadline = NOT_FREE_TO_REUSE;
 
         // Needed to put back changed fields.
-        self.reader.metadata_buffer.put::<CounterMetaDataDefn>(record_offset, record);
+        self.reader
+            .metadata_buffer
+            .put::<CounterMetaDataDefn>(record_offset, record);
 
         if key_opt.is_some() && key_func.is_some() {
             return Err(IllegalArgumentError::AllocateKeyIsAmbiguous.into());
@@ -396,11 +429,16 @@ impl CountersManager {
                 return Err(IllegalArgumentError::AllocateKeyIsTooLong.into());
             }
 
-            self.reader.metadata_buffer.put_bytes(record_offset + *KEY_OFFSET, key);
+            self.reader
+                .metadata_buffer
+                .put_bytes(record_offset + *KEY_OFFSET, key);
         }
 
         if let Some(key_fn) = key_func {
-            let mut key_buffer = self.reader.metadata_buffer.view(record_offset + *KEY_OFFSET, MAX_KEY_LENGTH);
+            let mut key_buffer = self
+                .reader
+                .metadata_buffer
+                .view(record_offset + *KEY_OFFSET, MAX_KEY_LENGTH);
             key_fn(&mut key_buffer);
         }
 
@@ -447,10 +485,9 @@ impl CountersManager {
         // Try to find counter ID which we allowed to reuse (based on reuse deadline)
         let search_result = self.free_list.iter().enumerate().find(|(_index, id)| {
             now_ms as i64
-                >= self
-                    .reader
-                    .metadata_buffer
-                    .get_volatile::<i64>(CountersReader::metadata_offset(**id) + *FREE_TO_REUSE_DEADLINE_OFFSET)
+                >= self.reader.metadata_buffer.get_volatile::<i64>(
+                    CountersReader::metadata_offset(**id) + *FREE_TO_REUSE_DEADLINE_OFFSET,
+                )
         });
 
         if let Some((index, id)) = search_result {
@@ -471,7 +508,9 @@ impl CountersManager {
     }
 
     fn check_counters_capacity(&self, counter_id: i32) -> Result<i32, AeronError> {
-        if CountersReader::counter_offset(counter_id) + COUNTER_LENGTH > self.reader.values_buffer.capacity() {
+        if CountersReader::counter_offset(counter_id) + COUNTER_LENGTH
+            > self.reader.values_buffer.capacity()
+        {
             return Err(IllegalArgumentError::UnableAllocateCounterBecauseValueBufferFull.into());
         }
 
@@ -480,7 +519,9 @@ impl CountersManager {
 
     fn check_meta_data_capacity(&self, record_offset: Index) -> Result<i32, AeronError> {
         if record_offset + METADATA_LENGTH > self.reader.metadata_buffer.capacity() {
-            return Err(IllegalArgumentError::UnableAllocateCounterBecauseMetadataBufferFull.into());
+            return Err(
+                IllegalArgumentError::UnableAllocateCounterBecauseMetadataBufferFull.into(),
+            );
         }
 
         Ok(0)
@@ -536,8 +577,12 @@ mod tests {
             let metadata_buffer = AtomicBuffer::from_aligned(&m_buff);
             let values_buffer = AtomicBuffer::from_aligned(&v_buff);
 
-            let mut $counters_manager_with_cool_down =
-                CountersManager::new_opt(metadata_buffer, values_buffer, $time_func, FREE_TO_REUSE_TIMEOUT);
+            let mut $counters_manager_with_cool_down = CountersManager::new_opt(
+                metadata_buffer,
+                values_buffer,
+                $time_func,
+                FREE_TO_REUSE_TIMEOUT,
+            );
         };
     }
 
@@ -622,7 +667,12 @@ mod tests {
         // Check counters known by CountersManager
         for (id, counter) in counters_manager.iter().enumerate() {
             assert_eq!(
-                unsafe { &utils::misc::aeron_str_to_rust(&counter.label.val[0] as *const u8, counter.label_length) },
+                unsafe {
+                    &utils::misc::aeron_str_to_rust(
+                        &counter.label.val[0] as *const u8,
+                        counter.label_length,
+                    )
+                },
                 allocated.get(&(id as i32)).unwrap()
             );
             allocated.remove(&(id as i32));
@@ -692,7 +742,9 @@ mod tests {
         // Set NOW to 999 - means that reuse timeout is not reached yet
         *NOW_TIME.lock().unwrap() = FREE_TO_REUSE_TIMEOUT - 1;
 
-        let next_id = counters_manager_with_cool_down.allocate("the next label").unwrap();
+        let next_id = counters_manager_with_cool_down
+            .allocate("the next label")
+            .unwrap();
         assert!(next_id > ghi);
     }
 
@@ -710,7 +762,12 @@ mod tests {
         counters_manager_with_cool_down.free(def);
 
         *NOW_TIME.lock().unwrap() = FREE_TO_REUSE_TIMEOUT;
-        assert_eq!(counters_manager_with_cool_down.allocate("the next label").unwrap(), def);
+        assert_eq!(
+            counters_manager_with_cool_down
+                .allocate("the next label")
+                .unwrap(),
+            def
+        );
     }
 
     #[test]
@@ -768,7 +825,12 @@ mod tests {
         for (counter_id, counter) in counters_manager.iter().enumerate() {
             assert_eq!(counter_id, num_counters);
             assert_eq!(
-                unsafe { &utils::misc::aeron_str_to_rust(&counter.label.val[0] as *const u8, counter.label_length) },
+                unsafe {
+                    &utils::misc::aeron_str_to_rust(
+                        &counter.label.val[0] as *const u8,
+                        counter.label_length,
+                    )
+                },
                 labels[num_counters]
             );
 

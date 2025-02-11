@@ -29,12 +29,15 @@ use aeron_rs::{
         strategies::{SleepingIdleStrategy, Strategy},
     },
     context::Context,
-    example_config::{DEFAULT_CHANNEL, DEFAULT_STREAM_ID, DEFAULT_FRAGMENT_COUNT_LIMIT, DEFAULT_LINGER_TIMEOUT_MS, DEFAULT_MESSAGE_LENGTH, DEFAULT_NUMBER_OF_MESSAGES},
+    example_config::{
+        DEFAULT_CHANNEL, DEFAULT_FRAGMENT_COUNT_LIMIT, DEFAULT_LINGER_TIMEOUT_MS,
+        DEFAULT_MESSAGE_LENGTH, DEFAULT_NUMBER_OF_MESSAGES, DEFAULT_STREAM_ID,
+    },
     image::Image,
     utils::{errors::AeronError, types::Index},
 };
-use structopt::StructOpt;
 use lazy_static::lazy_static;
+use structopt::StructOpt;
 
 lazy_static! {
     pub static ref RUNNING: AtomicBool = AtomicBool::from(true);
@@ -62,11 +65,15 @@ impl Settings {
     }
 }
 
-
 #[derive(StructOpt, Clone, Debug)]
-#[structopt(name = "Aeron  subscriber" )]
+#[structopt(name = "Aeron  subscriber")]
 struct CmdOpts {
-    #[structopt(short = "p", long = "dir", default_value = "", help = "Prefix directory for aeron driver")]
+    #[structopt(
+        short = "p",
+        long = "dir",
+        default_value = "",
+        help = "Prefix directory for aeron driver"
+    )]
     dir_prefix: String,
     #[structopt(short = "c", long = "channel", default_value = DEFAULT_CHANNEL, help = "Channel")]
     channel: String,
@@ -87,7 +94,6 @@ struct CmdOpts {
 fn parse_cmd_line() -> CmdOpts {
     CmdOpts::from_args()
 }
-
 
 fn available_image_handler(image: &Image) {
     println!(
@@ -115,7 +121,8 @@ fn error_handler(error: AeronError) {
 
 fn on_new_fragment(buffer: &AtomicBuffer, offset: Index, length: Index, header: &Header) {
     unsafe {
-        let slice_msg = slice::from_raw_parts_mut(buffer.buffer().offset(offset as isize), length as usize);
+        let slice_msg =
+            slice::from_raw_parts_mut(buffer.buffer().offset(offset as isize), length as usize);
         let msg = CString::new(slice_msg).unwrap();
         println!(
             "Message to stream {} from session {} ({}@{}): <<{}>>",
@@ -142,7 +149,10 @@ fn main() {
 
     let settings = parse_cmd_line();
 
-    println!("Subscribing Pong at {} on Stream ID {}", settings.channel, settings.stream_id);
+    println!(
+        "Subscribing Pong at {} on Stream ID {}",
+        settings.channel, settings.stream_id
+    );
 
     let mut context = Context::new();
 
@@ -152,9 +162,16 @@ fn main() {
 
     println!("Using CnC file: {}", context.cnc_file_name());
 
-    context.set_new_subscription_handler(Box::new(|channel: CString, stream_id: i32, correlation_id: i64| {
-        println!("Subscription: {} {} {}", channel.to_str().unwrap(), stream_id, correlation_id)
-    }));
+    context.set_new_subscription_handler(Box::new(
+        |channel: CString, stream_id: i32, correlation_id: i64| {
+            println!(
+                "Subscription: {} {} {}",
+                channel.to_str().unwrap(),
+                stream_id,
+                correlation_id
+            )
+        },
+    ));
     context.set_available_image_handler(Box::new(available_image_handler));
     context.set_unavailable_image_handler(Box::new(unavailable_image_handler));
     context.set_error_handler(Box::new(error_handler));
@@ -194,7 +211,10 @@ fn main() {
     let idle_strategy = SleepingIdleStrategy::new(1000);
 
     while RUNNING.load(Ordering::SeqCst) {
-        let fragments_read = subscription.lock().expect("Fu").poll(&mut on_new_fragment, 10);
+        let fragments_read = subscription
+            .lock()
+            .expect("Fu")
+            .poll(&mut on_new_fragment, 10);
         idle_strategy.idle_opt(fragments_read);
     }
 }

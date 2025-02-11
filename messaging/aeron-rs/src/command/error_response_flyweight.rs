@@ -90,7 +90,8 @@ impl ErrorResponseFlyweight {
     #[inline]
     pub fn length(&self) -> Index {
         unsafe {
-            offset_of!(ErrorResponseDefn, error_message_data) as Index + (*self.flyweight.m_struct).error_message_length as Index
+            offset_of!(ErrorResponseDefn, error_message_data) as Index
+                + (*self.flyweight.m_struct).error_message_length as Index
         }
     }
 }
