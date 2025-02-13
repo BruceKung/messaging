@@ -48,13 +48,11 @@ impl Subscriber {
                 "Adding subscription to Aeron with channel {} and stream id {}",
                 channel, stream_id
             );
-
-            let subscription_id = 0;
             //往aeron注册订阅
-            match aeron.lock() {
+            let subscription_id = match aeron.lock() {
                 Ok(mut aeron_locked) => {
                     match aeron_locked.add_subscription(str_to_c(channel), stream_id) {
-                        Ok(_) => {}
+                        Ok(id) => id,
                         Err(e) => {
                             panic!("[error] Could not add subscription,e:{:?}", e);
                         }
@@ -63,7 +61,7 @@ impl Subscriber {
                 Err(e) => {
                     panic!("[error] lock aeron error");
                 }
-            }
+            };
 
             let mut sub: Result<Arc<Mutex<Subscription>>, AeronError> =
                 Err(GenericError::SubscriptionNotFound.into());
