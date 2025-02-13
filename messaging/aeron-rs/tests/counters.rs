@@ -69,7 +69,11 @@ fn counter_handler_b(counters_reader: &CountersReader, registration_id: i64, cou
         "counter_handler_b: counter with registration_id {}, counter_id {}, label {}, value {}",
         registration_id,
         counter_id,
-        counters_reader.counter_label(counter_id).unwrap().to_str().unwrap(),
+        counters_reader
+            .counter_label(counter_id)
+            .unwrap()
+            .to_str()
+            .unwrap(),
         counters_reader.counter_value(counter_id).unwrap()
     );
 }
@@ -109,7 +113,9 @@ fn test_counter_create() {
 
     let counter_key: [u8; 3] = [3, 3, 3];
 
-    let counter_id = aeron_a.add_counter(COUNTER_TYPE_ID, &counter_key, COUNTER_LABEL).unwrap();
+    let counter_id = aeron_a
+        .add_counter(COUNTER_TYPE_ID, &counter_key, COUNTER_LABEL)
+        .unwrap();
 
     // Find counter from A client
     let mut counter_on_a_side = aeron_a.find_counter(counter_id);

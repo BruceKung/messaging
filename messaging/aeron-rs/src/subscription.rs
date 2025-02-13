@@ -188,7 +188,11 @@ impl Subscription {
      * @see fragment_handler_t
      */
 
-    pub fn poll(&mut self, fragment_handler: &mut impl FnMut(&AtomicBuffer, Index, Index, &Header), fragment_limit: i32) -> i32 {
+    pub fn poll(
+        &mut self,
+        fragment_handler: &mut impl FnMut(&AtomicBuffer, Index, Index, &Header),
+        fragment_limit: i32,
+    ) -> i32 {
         let image_list = self.image_list.load_mut();
 
         let mut fragments_read = 0;
@@ -239,7 +243,8 @@ impl Subscription {
      */
     pub fn controlled_poll(
         &mut self,
-        fragment_handler: impl FnMut(&AtomicBuffer, Index, Index, &Header) -> Result<ControlledPollAction, AeronError> + Copy,
+        fragment_handler: impl FnMut(&AtomicBuffer, Index, Index, &Header) -> Result<ControlledPollAction, AeronError>
+            + Copy,
         fragment_limit: i32,
     ) -> i32 {
         let image_list = self.image_list.load_mut();
@@ -304,7 +309,12 @@ impl Subscription {
 
         let length = image_list.len();
 
-        (0..length).any(|idx| !image_list.get(idx).expect("Error getting element from Image vec").is_closed())
+        (0..length).any(|idx| {
+            !image_list
+                .get(idx)
+                .expect("Error getting element from Image vec")
+                .is_closed()
+        })
     }
 
     /**
@@ -365,7 +375,8 @@ impl Subscription {
 
     pub fn has_image(&self, correlation_id: i64) -> bool {
         let list = self.image_list.load();
-        list.iter().any(|img| img.correlation_id() == correlation_id)
+        list.iter()
+            .any(|img| img.correlation_id() == correlation_id)
     }
 
     /// Adds image to the subscription and returns Images

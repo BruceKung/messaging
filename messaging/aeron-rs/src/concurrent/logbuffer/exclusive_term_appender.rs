@@ -39,7 +39,11 @@ pub struct ExclusiveTermAppender {
 }
 
 impl ExclusiveTermAppender {
-    pub fn new(term_buffer: AtomicBuffer, meta_data_buffer: AtomicBuffer, partition_index: Index) -> Self {
+    pub fn new(
+        term_buffer: AtomicBuffer,
+        meta_data_buffer: AtomicBuffer,
+        partition_index: Index,
+    ) -> Self {
         // This check implemented as assert. Looks like out of bounds here can be reached only
         // due to a bug elsewhere. Therefore don't need more sophisticated error handling.
         meta_data_buffer.bounds_check(
@@ -79,7 +83,13 @@ impl ExclusiveTermAppender {
         self.put_raw_tail_ordered(term_id as i64, resulting_offset);
 
         if resulting_offset > term_length {
-            resulting_offset = Self::handle_end_of_log_condition(&self.term_buffer, term_id, term_offset, header, term_length);
+            resulting_offset = Self::handle_end_of_log_condition(
+                &self.term_buffer,
+                term_id,
+                term_offset,
+                header,
+                term_length,
+            );
         } else {
             header.write(&self.term_buffer, term_offset, frame_length, term_id);
             buffer_claim.wrap_with_offset(&self.term_buffer, term_offset, frame_length);
@@ -108,17 +118,34 @@ impl ExclusiveTermAppender {
         self.put_raw_tail_ordered(term_id as i64, resulting_offset);
 
         if resulting_offset > term_length {
-            resulting_offset = Self::handle_end_of_log_condition(&self.term_buffer, term_id, term_offset, header, term_length);
+            resulting_offset = Self::handle_end_of_log_condition(
+                &self.term_buffer,
+                term_id,
+                term_offset,
+                header,
+                term_length,
+            );
         } else {
             header.write(&self.term_buffer, term_offset, frame_length, term_id);
-            self.term_buffer
-                .copy_from(term_offset + data_frame_header::LENGTH, &src_buffer, src_offset, length);
+            self.term_buffer.copy_from(
+                term_offset + data_frame_header::LENGTH,
+                &src_buffer,
+                src_offset,
+                length,
+            );
 
-            let reserved_value = reserved_value_supplier(self.term_buffer, term_offset, frame_length);
-            self.term_buffer
-                .put::<i64>(term_offset + *data_frame_header::RESERVED_VALUE_FIELD_OFFSET, reserved_value);
+            let reserved_value =
+                reserved_value_supplier(self.term_buffer, term_offset, frame_length);
+            self.term_buffer.put::<i64>(
+                term_offset + *data_frame_header::RESERVED_VALUE_FIELD_OFFSET,
+                reserved_value,
+            );
 
-            frame_descriptor::set_frame_length_ordered(&self.term_buffer, term_offset, frame_length);
+            frame_descriptor::set_frame_length_ordered(
+                &self.term_buffer,
+                term_offset,
+                frame_length,
+            );
         }
 
         resulting_offset
@@ -134,7 +161,8 @@ impl ExclusiveTermAppender {
         reserved_value_supplier: OnReservedValueSupplier,
     ) -> Index {
         let frame_length: Index = length + data_frame_header::LENGTH;
-        let aligned_length: Index = bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
+        let aligned_length: Index =
+            bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
 
         let term_length = self.term_buffer.capacity();
         let mut resulting_offset = term_offset + aligned_length;
@@ -142,8 +170,13 @@ impl ExclusiveTermAppender {
         self.put_raw_tail_ordered(term_id as i64, resulting_offset);
 
         if resulting_offset > term_length {
-            resulting_offset =
-                ExclusiveTermAppender::handle_end_of_log_condition(&self.term_buffer, term_id, term_offset, header, term_length);
+            resulting_offset = ExclusiveTermAppender::handle_end_of_log_condition(
+                &self.term_buffer,
+                term_id,
+                term_offset,
+                header,
+                term_length,
+            );
         } else {
             header.write(&self.term_buffer, term_offset, frame_length, term_id);
 
@@ -159,11 +192,18 @@ impl ExclusiveTermAppender {
                 self.term_buffer.copy_from(offset, buf, 0, buf.capacity());
             }
 
-            let reserved_value = reserved_value_supplier(self.term_buffer, term_offset, frame_length);
-            self.term_buffer
-                .put::<i64>(term_offset + *data_frame_header::RESERVED_VALUE_FIELD_OFFSET, reserved_value);
+            let reserved_value =
+                reserved_value_supplier(self.term_buffer, term_offset, frame_length);
+            self.term_buffer.put::<i64>(
+                term_offset + *data_frame_header::RESERVED_VALUE_FIELD_OFFSET,
+                reserved_value,
+            );
 
-            frame_descriptor::set_frame_length_ordered(&self.term_buffer, term_offset, frame_length);
+            frame_descriptor::set_frame_length_ordered(
+                &self.term_buffer,
+                term_offset,
+                frame_length,
+            );
         }
 
         resulting_offset
@@ -192,7 +232,8 @@ impl ExclusiveTermAppender {
             0
         };
 
-        let required_length = (num_max_payloads * (max_payload_length + data_frame_header::LENGTH)) + last_frame_length;
+        let required_length = (num_max_payloads * (max_payload_length + data_frame_header::LENGTH))
+            + last_frame_length;
 
         let term_length = self.term_buffer.capacity();
 
@@ -200,7 +241,13 @@ impl ExclusiveTermAppender {
         self.put_raw_tail_ordered(term_id as i64, resulting_offset);
 
         if resulting_offset > term_length {
-            resulting_offset = Self::handle_end_of_log_condition(&self.term_buffer, term_id, term_offset, header, term_length);
+            resulting_offset = Self::handle_end_of_log_condition(
+                &self.term_buffer,
+                term_id,
+                term_offset,
+                header,
+                term_length,
+            );
         } else {
             let mut flags = frame_descriptor::BEGIN_FRAG;
             let mut remaining = length;
@@ -209,7 +256,8 @@ impl ExclusiveTermAppender {
             loop {
                 let bytes_to_write = std::cmp::min(remaining, max_payload_length);
                 let frame_length = bytes_to_write + data_frame_header::LENGTH;
-                let aligned_length = bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
+                let aligned_length =
+                    bit_utils::align(frame_length, frame_descriptor::FRAME_ALIGNMENT);
 
                 header.write(&self.term_buffer, offset, frame_length, term_id);
                 self.term_buffer.copy_from(
@@ -225,9 +273,12 @@ impl ExclusiveTermAppender {
 
                 frame_descriptor::set_frame_flags(&self.term_buffer, offset, flags);
 
-                let reserved_value = reserved_value_supplier(self.term_buffer, offset, frame_length);
-                self.term_buffer
-                    .put::<i64>(offset + *data_frame_header::RESERVED_VALUE_FIELD_OFFSET, reserved_value);
+                let reserved_value =
+                    reserved_value_supplier(self.term_buffer, offset, frame_length);
+                self.term_buffer.put::<i64>(
+                    offset + *data_frame_header::RESERVED_VALUE_FIELD_OFFSET,
+                    reserved_value,
+                );
 
                 frame_descriptor::set_frame_length_ordered(&self.term_buffer, offset, frame_length);
 
@@ -254,7 +305,11 @@ impl ExclusiveTermAppender {
         if term_offset < term_length {
             let padding_length = term_length - term_offset;
             header.write(term_buffer, term_offset, padding_length, term_id);
-            frame_descriptor::set_frame_type(term_buffer, term_offset, data_frame_header::HDR_TYPE_PAD);
+            frame_descriptor::set_frame_type(
+                term_buffer,
+                term_offset,
+                data_frame_header::HDR_TYPE_PAD,
+            );
             frame_descriptor::set_frame_length_ordered(term_buffer, term_offset, padding_length);
         }
 

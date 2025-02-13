@@ -11,7 +11,10 @@ pub mod record_descriptor;
 #[derive(Debug, Eq, PartialEq, Error)]
 pub enum BroadcastTransmitError {
     #[error("Encoded message exceeds max_msg_length={max_msg_length}, msg_length={length}")]
-    EncodedMessageExceedsMaxMsgLength { max_msg_length: Index, length: Index },
+    EncodedMessageExceedsMaxMsgLength {
+        max_msg_length: Index,
+        length: Index,
+    },
     #[error("{0} is not power of two")]
     NotPowerOfTwo(Index),
     #[error("Message id should be greater then zero, {0} provided")]

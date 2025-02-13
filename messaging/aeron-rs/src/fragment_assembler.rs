@@ -61,7 +61,8 @@ impl<'a> FragmentAssembler<'a> {
         Self {
             delegate,
             builder_by_session_id_map: HashMap::new(),
-            initial_buffer_length: initial_buffer_length.unwrap_or(DEFAULT_FRAGMENT_ASSEMBLY_BUFFER_LENGTH),
+            initial_buffer_length: initial_buffer_length
+                .unwrap_or(DEFAULT_FRAGMENT_ASSEMBLY_BUFFER_LENGTH),
         }
     }
 
@@ -72,7 +73,9 @@ impl<'a> FragmentAssembler<'a> {
      * @return fragment_handler_t composed with the FragmentAssembler instance
      */
     pub fn handler(&'a mut self) -> impl Fragment + 'a {
-        move |buffer: &AtomicBuffer, offset, length, header: &Header| self.on_fragment(buffer, offset, length, header)
+        move |buffer: &AtomicBuffer, offset, length, header: &Header| {
+            self.on_fragment(buffer, offset, length, header)
+        }
     }
 
     /**
@@ -86,7 +89,13 @@ impl<'a> FragmentAssembler<'a> {
     }
 
     #[inline]
-    fn on_fragment(&mut self, buffer: &AtomicBuffer, offset: Index, length: Index, header: &Header) {
+    fn on_fragment(
+        &mut self,
+        buffer: &AtomicBuffer,
+        offset: Index,
+        length: Index,
+        header: &Header,
+    ) {
         let flags = header.flags();
         if (flags & frame_descriptor::UNFRAGMENTED) == frame_descriptor::UNFRAGMENTED {
             (self.delegate)(buffer, offset, length, header);
@@ -99,10 +108,15 @@ impl<'a> FragmentAssembler<'a> {
                 .entry(header.session_id())
                 .or_insert_with(|| BufferBuilder::new(initial_buffer_length));
 
-            builder.reset().append(buffer, offset, length, header).expect("append failed");
+            builder
+                .reset()
+                .append(buffer, offset, length, header)
+                .expect("append failed");
         } else if let Some(builder) = self.builder_by_session_id_map.get_mut(&header.session_id()) {
             if builder.limit() != data_frame_header::LENGTH {
-                builder.append(buffer, offset, length, header).expect("append failed");
+                builder
+                    .append(buffer, offset, length, header)
+                    .expect("append failed");
 
                 if flags & frame_descriptor::END_FRAG == frame_descriptor::END_FRAG {
                     let msg_length = builder.limit() - data_frame_header::LENGTH;
@@ -144,7 +158,8 @@ mod test {
     const MTU_LENGTH: Index = 128;
 
     lazy_static! {
-        pub static ref POSITION_BITS_TO_SHIFT: i32 = bit_utils::number_of_trailing_zeroes(TERM_LENGTH);
+        pub static ref POSITION_BITS_TO_SHIFT: i32 =
+            bit_utils::number_of_trailing_zeroes(TERM_LENGTH);
         pub static ref CALLED: AtomicBool = AtomicBool::new(false);
     }
 
@@ -182,7 +197,8 @@ mod test {
             }
 
             for i in 0..length {
-                self.buffer.put(i + offset + data_frame_header::LENGTH, payload_value);
+                self.buffer
+                    .put(i + offset + data_frame_header::LENGTH, payload_value);
             }
         }
 
@@ -210,35 +226,44 @@ mod test {
         test.fill_frame(frame_descriptor::UNFRAGMENTED, 0, msg_length, 1);
         static CALLED: AtomicBool = AtomicBool::new(false);
 
-        let mut fragment = move |buffer: &AtomicBuffer, offset: Index, length: Index, header: &Header| {
-            CALLED.store(true, Ordering::Relaxed);
-            assert_eq!(offset, data_frame_header::LENGTH);
-            assert_eq!(length, msg_length);
-            assert_eq!(header.session_id(), SESSION_ID);
-            assert_eq!(header.stream_id(), STREAM_ID);
-            assert_eq!(header.term_id(), ACTIVE_TERM_ID);
-            assert_eq!(header.initial_term_id(), INITIAL_TERM_ID);
-            assert_eq!(header.term_offset(), 0);
-            assert_eq!(header.frame_length(), data_frame_header::LENGTH + msg_length);
-            assert_eq!(header.flags(), frame_descriptor::UNFRAGMENTED);
-            assert_eq!(
-                header.position(),
-                log_buffer_descriptor::compute_position(
-                    ACTIVE_TERM_ID,
-                    bit_utils::align(
-                        header.term_offset() + header.frame_length(),
-                        frame_descriptor::FRAME_ALIGNMENT
-                    ),
-                    *POSITION_BITS_TO_SHIFT,
-                    INITIAL_TERM_ID
-                )
-            );
-            FragmentAssemblerTest::verify_payload(buffer, offset, &[msg_length]);
-        };
+        let mut fragment =
+            move |buffer: &AtomicBuffer, offset: Index, length: Index, header: &Header| {
+                CALLED.store(true, Ordering::Relaxed);
+                assert_eq!(offset, data_frame_header::LENGTH);
+                assert_eq!(length, msg_length);
+                assert_eq!(header.session_id(), SESSION_ID);
+                assert_eq!(header.stream_id(), STREAM_ID);
+                assert_eq!(header.term_id(), ACTIVE_TERM_ID);
+                assert_eq!(header.initial_term_id(), INITIAL_TERM_ID);
+                assert_eq!(header.term_offset(), 0);
+                assert_eq!(
+                    header.frame_length(),
+                    data_frame_header::LENGTH + msg_length
+                );
+                assert_eq!(header.flags(), frame_descriptor::UNFRAGMENTED);
+                assert_eq!(
+                    header.position(),
+                    log_buffer_descriptor::compute_position(
+                        ACTIVE_TERM_ID,
+                        bit_utils::align(
+                            header.term_offset() + header.frame_length(),
+                            frame_descriptor::FRAME_ALIGNMENT
+                        ),
+                        *POSITION_BITS_TO_SHIFT,
+                        INITIAL_TERM_ID
+                    )
+                );
+                FragmentAssemblerTest::verify_payload(buffer, offset, &[msg_length]);
+            };
 
         let mut adapter = FragmentAssembler::new(&mut fragment, None);
 
-        adapter.handler()(&test.buffer, data_frame_header::LENGTH, msg_length, &test.header);
+        adapter.handler()(
+            &test.buffer,
+            data_frame_header::LENGTH,
+            msg_length,
+            &test.header,
+        );
         assert!(CALLED.load(Ordering::Relaxed));
     }
 
@@ -248,42 +273,56 @@ mod test {
         let msg_length = MTU_LENGTH - data_frame_header::LENGTH;
         static CALLED: AtomicBool = AtomicBool::new(false);
 
-        let mut fragment = move |buffer: &AtomicBuffer, offset: Index, length: Index, header: &Header| {
-            CALLED.store(true, Ordering::Relaxed);
-            assert_eq!(offset, data_frame_header::LENGTH);
-            assert_eq!(length, msg_length * 2);
-            assert_eq!(header.session_id(), SESSION_ID);
-            assert_eq!(header.stream_id(), STREAM_ID);
-            assert_eq!(header.term_id(), ACTIVE_TERM_ID);
-            assert_eq!(header.initial_term_id(), INITIAL_TERM_ID);
-            assert_eq!(header.term_offset(), MTU_LENGTH);
-            assert_eq!(header.frame_length(), data_frame_header::LENGTH + msg_length);
-            assert_eq!(header.flags(), frame_descriptor::END_FRAG);
-            assert_eq!(
-                header.position(),
-                log_buffer_descriptor::compute_position(
-                    ACTIVE_TERM_ID,
-                    bit_utils::align(
-                        header.term_offset() + header.frame_length(),
-                        frame_descriptor::FRAME_ALIGNMENT
-                    ),
-                    *POSITION_BITS_TO_SHIFT,
-                    INITIAL_TERM_ID
-                )
-            );
-            FragmentAssemblerTest::verify_payload(buffer, offset, &[msg_length, msg_length]);
-        };
+        let mut fragment =
+            move |buffer: &AtomicBuffer, offset: Index, length: Index, header: &Header| {
+                CALLED.store(true, Ordering::Relaxed);
+                assert_eq!(offset, data_frame_header::LENGTH);
+                assert_eq!(length, msg_length * 2);
+                assert_eq!(header.session_id(), SESSION_ID);
+                assert_eq!(header.stream_id(), STREAM_ID);
+                assert_eq!(header.term_id(), ACTIVE_TERM_ID);
+                assert_eq!(header.initial_term_id(), INITIAL_TERM_ID);
+                assert_eq!(header.term_offset(), MTU_LENGTH);
+                assert_eq!(
+                    header.frame_length(),
+                    data_frame_header::LENGTH + msg_length
+                );
+                assert_eq!(header.flags(), frame_descriptor::END_FRAG);
+                assert_eq!(
+                    header.position(),
+                    log_buffer_descriptor::compute_position(
+                        ACTIVE_TERM_ID,
+                        bit_utils::align(
+                            header.term_offset() + header.frame_length(),
+                            frame_descriptor::FRAME_ALIGNMENT
+                        ),
+                        *POSITION_BITS_TO_SHIFT,
+                        INITIAL_TERM_ID
+                    )
+                );
+                FragmentAssemblerTest::verify_payload(buffer, offset, &[msg_length, msg_length]);
+            };
 
         let mut adapter = FragmentAssembler::new(&mut fragment, None);
         let mut handler = adapter.handler();
         test.fill_frame(frame_descriptor::BEGIN_FRAG, 0, msg_length, 1);
         test.header.set_offset(0);
-        handler(&test.buffer, data_frame_header::LENGTH, msg_length, &test.header);
+        handler(
+            &test.buffer,
+            data_frame_header::LENGTH,
+            msg_length,
+            &test.header,
+        );
         assert!(!CALLED.load(Ordering::Relaxed));
 
         test.header.set_offset(MTU_LENGTH);
         test.fill_frame(frame_descriptor::END_FRAG, MTU_LENGTH, msg_length, 2);
-        handler(&test.buffer, MTU_LENGTH + data_frame_header::LENGTH, msg_length, &test.header);
+        handler(
+            &test.buffer,
+            MTU_LENGTH + data_frame_header::LENGTH,
+            msg_length,
+            &test.header,
+        );
         assert!(CALLED.load(Ordering::Relaxed));
     }
 
@@ -293,42 +332,60 @@ mod test {
         let msg_length = MTU_LENGTH - data_frame_header::LENGTH;
         static CALLED: AtomicBool = AtomicBool::new(false);
 
-        let mut fragment = move |buffer: &AtomicBuffer, offset: Index, length: Index, header: &Header| {
-            CALLED.store(true, Ordering::Relaxed);
-            assert_eq!(offset, data_frame_header::LENGTH);
-            assert_eq!(length, msg_length * 3);
-            assert_eq!(header.session_id(), SESSION_ID);
-            assert_eq!(header.stream_id(), STREAM_ID);
-            assert_eq!(header.term_id(), ACTIVE_TERM_ID);
-            assert_eq!(header.term_offset(), MTU_LENGTH * 2);
-            assert_eq!(header.frame_length(), data_frame_header::LENGTH + msg_length);
-            assert_eq!(header.flags(), frame_descriptor::END_FRAG);
-            assert_eq!(
-                header.position(),
-                log_buffer_descriptor::compute_position(
-                    ACTIVE_TERM_ID,
-                    bit_utils::align(
-                        header.term_offset() + header.frame_length(),
-                        frame_descriptor::FRAME_ALIGNMENT
-                    ),
-                    *POSITION_BITS_TO_SHIFT,
-                    INITIAL_TERM_ID
-                )
-            );
-            FragmentAssemblerTest::verify_payload(buffer, offset, &[msg_length, msg_length, msg_length]);
-        };
+        let mut fragment =
+            move |buffer: &AtomicBuffer, offset: Index, length: Index, header: &Header| {
+                CALLED.store(true, Ordering::Relaxed);
+                assert_eq!(offset, data_frame_header::LENGTH);
+                assert_eq!(length, msg_length * 3);
+                assert_eq!(header.session_id(), SESSION_ID);
+                assert_eq!(header.stream_id(), STREAM_ID);
+                assert_eq!(header.term_id(), ACTIVE_TERM_ID);
+                assert_eq!(header.term_offset(), MTU_LENGTH * 2);
+                assert_eq!(
+                    header.frame_length(),
+                    data_frame_header::LENGTH + msg_length
+                );
+                assert_eq!(header.flags(), frame_descriptor::END_FRAG);
+                assert_eq!(
+                    header.position(),
+                    log_buffer_descriptor::compute_position(
+                        ACTIVE_TERM_ID,
+                        bit_utils::align(
+                            header.term_offset() + header.frame_length(),
+                            frame_descriptor::FRAME_ALIGNMENT
+                        ),
+                        *POSITION_BITS_TO_SHIFT,
+                        INITIAL_TERM_ID
+                    )
+                );
+                FragmentAssemblerTest::verify_payload(
+                    buffer,
+                    offset,
+                    &[msg_length, msg_length, msg_length],
+                );
+            };
 
         let mut adapter = FragmentAssembler::new(&mut fragment, None);
         let mut handler = adapter.handler();
 
         test.fill_frame(frame_descriptor::BEGIN_FRAG, 0, msg_length, 1);
         test.header.set_offset(0);
-        handler(&test.buffer, data_frame_header::LENGTH, msg_length, &test.header);
+        handler(
+            &test.buffer,
+            data_frame_header::LENGTH,
+            msg_length,
+            &test.header,
+        );
         assert!(!CALLED.load(Ordering::Relaxed));
 
         test.header.set_offset(MTU_LENGTH);
         test.fill_frame(0, MTU_LENGTH, msg_length, 2);
-        handler(&test.buffer, MTU_LENGTH + data_frame_header::LENGTH, msg_length, &test.header);
+        handler(
+            &test.buffer,
+            MTU_LENGTH + data_frame_header::LENGTH,
+            msg_length,
+            &test.header,
+        );
         assert!(!CALLED.load(Ordering::Relaxed));
 
         test.header.set_offset(MTU_LENGTH * 2);
@@ -348,15 +405,21 @@ mod test {
         let msg_length = MTU_LENGTH - data_frame_header::LENGTH;
         static CALLED: AtomicBool = AtomicBool::new(false);
 
-        let mut fragment = move |_buffer: &AtomicBuffer, _offset: Index, _length: Index, _header: &Header| {
-            CALLED.store(true, Ordering::Relaxed);
-        };
+        let mut fragment =
+            move |_buffer: &AtomicBuffer, _offset: Index, _length: Index, _header: &Header| {
+                CALLED.store(true, Ordering::Relaxed);
+            };
 
         let mut adapter = FragmentAssembler::new(&mut fragment, None);
 
         test.header.set_offset(MTU_LENGTH);
         test.fill_frame(frame_descriptor::END_FRAG, MTU_LENGTH, msg_length, 1);
-        adapter.handler()(&test.buffer, data_frame_header::LENGTH, msg_length, &test.header);
+        adapter.handler()(
+            &test.buffer,
+            data_frame_header::LENGTH,
+            msg_length,
+            &test.header,
+        );
         assert!(!CALLED.load(Ordering::Relaxed));
     }
 
@@ -367,19 +430,31 @@ mod test {
         static CALLED: AtomicBool = AtomicBool::new(false);
 
         let mut fragment =
-            move |_buffer: &AtomicBuffer, _offset: Index, _length: Index, _header: &Header| CALLED.store(true, Ordering::Relaxed);
+            move |_buffer: &AtomicBuffer, _offset: Index, _length: Index, _header: &Header| {
+                CALLED.store(true, Ordering::Relaxed)
+            };
 
         let mut adapter = FragmentAssembler::new(&mut fragment, None);
         let mut handler = adapter.handler();
 
         test.header.set_offset(MTU_LENGTH);
         test.fill_frame(frame_descriptor::END_FRAG, MTU_LENGTH, msg_length, 1);
-        handler(&test.buffer, data_frame_header::LENGTH, msg_length, &test.header);
+        handler(
+            &test.buffer,
+            data_frame_header::LENGTH,
+            msg_length,
+            &test.header,
+        );
         assert!(!CALLED.load(Ordering::Relaxed));
 
         test.header.set_offset(MTU_LENGTH * 2);
         test.fill_frame(frame_descriptor::END_FRAG, MTU_LENGTH * 2, msg_length, 2);
-        handler(&test.buffer, data_frame_header::LENGTH, msg_length, &test.header);
+        handler(
+            &test.buffer,
+            data_frame_header::LENGTH,
+            msg_length,
+            &test.header,
+        );
         assert!(!CALLED.load(Ordering::Relaxed));
     }
 }

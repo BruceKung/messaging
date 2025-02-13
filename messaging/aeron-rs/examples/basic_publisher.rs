@@ -28,7 +28,10 @@ use aeron_rs::{
         status::status_indicator_reader::channel_status_to_str,
     },
     context::Context,
-    example_config::{DEFAULT_CHANNEL, DEFAULT_STREAM_ID, DEFAULT_FRAGMENT_COUNT_LIMIT, DEFAULT_LINGER_TIMEOUT_MS, DEFAULT_NUMBER_OF_MESSAGES, DEFAULT_MESSAGE_LENGTH},
+    example_config::{
+        DEFAULT_CHANNEL, DEFAULT_FRAGMENT_COUNT_LIMIT, DEFAULT_LINGER_TIMEOUT_MS,
+        DEFAULT_MESSAGE_LENGTH, DEFAULT_NUMBER_OF_MESSAGES, DEFAULT_STREAM_ID,
+    },
     utils::errors::AeronError,
 };
 use lazy_static::lazy_static;
@@ -64,11 +67,15 @@ impl Settings {
     }
 }
 
-
 #[derive(StructOpt, Clone, Debug)]
-#[structopt(name = "Aeron  subscriber" )]
+#[structopt(name = "Aeron  subscriber")]
 struct CmdOpts {
-    #[structopt(short = "p", long = "dir", default_value = "", help = "Prefix directory for aeron driver")]
+    #[structopt(
+        short = "p",
+        long = "dir",
+        default_value = "",
+        help = "Prefix directory for aeron driver"
+    )]
     dir_prefix: String,
     #[structopt(short = "c", long = "channel", default_value = DEFAULT_CHANNEL, help = "Channel")]
     channel: String,
@@ -90,12 +97,16 @@ fn parse_cmd_line() -> CmdOpts {
     CmdOpts::from_args()
 }
 
-
 fn error_handler(error: AeronError) {
     println!("Error: {:?}", error);
 }
 
-fn on_new_publication_handler(channel: CString, stream_id: i32, session_id: i32, correlation_id: i64) {
+fn on_new_publication_handler(
+    channel: CString,
+    stream_id: i32,
+    session_id: i32,
+    correlation_id: i64,
+) {
     println!(
         "Publication: {} {} {} {}",
         channel.to_str().unwrap(),
@@ -182,7 +193,10 @@ fn main() {
         println!("offering {}/{}", i + 1, settings.number_of_messages);
         let _unused = stdout().flush();
 
-        let result = publication.lock().unwrap().offer_part(src_buffer, 0, c_str_msg.len() as i32);
+        let result = publication
+            .lock()
+            .unwrap()
+            .offer_part(src_buffer, 0, c_str_msg.len() as i32);
 
         if let Ok(code) = result {
             println!("Sent with code {}!", code);

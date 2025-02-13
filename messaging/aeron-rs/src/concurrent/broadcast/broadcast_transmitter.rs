@@ -47,7 +47,8 @@ impl BroadcastTransmitter {
             capacity,
             mask: capacity - 1,
             max_msg_length: record_descriptor::calculate_max_message_length(capacity),
-            tail_intent_counter_index: capacity + broadcast_buffer_descriptor::TAIL_INTENT_COUNTER_OFFSET,
+            tail_intent_counter_index: capacity
+                + broadcast_buffer_descriptor::TAIL_INTENT_COUNTER_OFFSET,
             tail_counter_index: capacity + broadcast_buffer_descriptor::TAIL_COUNTER_OFFSET,
             latest_counter_index: capacity + broadcast_buffer_descriptor::LATEST_COUNTER_OFFSET,
         })
@@ -75,7 +76,8 @@ impl BroadcastTransmitter {
         let mut record_offset = (current_tail & self.mask as i64) as Index; //зачем тут маска, если он всегда равен выравниванию
 
         let record_length: Index = length + record_descriptor::HEADER_LENGTH;
-        let aligned_record_length: Index = align(record_length, record_descriptor::RECORD_ALIGNMENT);
+        let aligned_record_length: Index =
+            align(record_length, record_descriptor::RECORD_ALIGNMENT);
         let new_tail: i64 = current_tail + aligned_record_length as i64;
         let to_end_of_buffer: Index = self.capacity - record_offset;
 
@@ -90,17 +92,26 @@ impl BroadcastTransmitter {
             self.signal_tail_intent(new_tail);
         }
 
-        self.buffer
-            .put::<i32>(record_descriptor::length_offset(record_offset), record_length);
+        self.buffer.put::<i32>(
+            record_descriptor::length_offset(record_offset),
+            record_length,
+        );
         self.buffer
             .put::<i32>(record_descriptor::type_offset(record_offset), msg_type_id);
 
-        self.buffer
-            .copy_from(record_descriptor::msg_offset(record_offset), src_buffer, src_index, length);
+        self.buffer.copy_from(
+            record_descriptor::msg_offset(record_offset),
+            src_buffer,
+            src_index,
+            length,
+        );
 
-        self.buffer.put::<i64>(self.latest_counter_index, current_tail);
         self.buffer
-            .put_ordered::<i64>(self.tail_counter_index, current_tail + aligned_record_length as i64);
+            .put::<i64>(self.latest_counter_index, current_tail);
+        self.buffer.put_ordered::<i64>(
+            self.tail_counter_index,
+            current_tail + aligned_record_length as i64,
+        );
 
         Ok(())
     }
@@ -118,15 +129,18 @@ impl BroadcastTransmitter {
     }
 
     fn signal_tail_intent(&mut self, new_tail: i64) {
-        self.buffer.put_ordered::<i64>(self.tail_intent_counter_index, new_tail);
+        self.buffer
+            .put_ordered::<i64>(self.tail_intent_counter_index, new_tail);
         atomics::release();
     }
 
     fn insert_padding_record(&mut self, record_offset: Index, length: Index) {
         self.buffer
             .put::<i32>(record_descriptor::length_offset(record_offset), length);
-        self.buffer
-            .put::<i32>(record_descriptor::type_offset(record_offset), AeronCommand::Padding as i32);
+        self.buffer.put::<i32>(
+            record_descriptor::type_offset(record_offset),
+            AeronCommand::Padding as i32,
+        );
     }
 }
 
@@ -185,7 +199,10 @@ mod tests {
         let _aligned_buffer = AlignedBuffer::with_capacity(capacity);
 
         let mut data: Vec<u8> = (0u8..(capacity as u8)).collect();
-        (AtomicBuffer::new(data.as_mut_ptr(), capacity as Index), data)
+        (
+            AtomicBuffer::new(data.as_mut_ptr(), capacity as Index),
+            data,
+        )
     }
 
     #[test]
@@ -201,7 +218,10 @@ mod tests {
         let test = BroadcastTransmitterTest::new(777);
         let transmitter = test.try_create_transmitter();
 
-        assert_eq!(transmitter.unwrap_err(), BroadcastTransmitError::NotPowerOfTwo(777));
+        assert_eq!(
+            transmitter.unwrap_err(),
+            BroadcastTransmitError::NotPowerOfTwo(777)
+        );
     }
 
     #[test]
@@ -212,7 +232,12 @@ mod tests {
         let src_buffer = test.create_message_buffer(16);
         assert_eq!(
             transmitter
-                .transmit(MSG_TYPE_ID, &src_buffer, 0, transmitter.max_msg_length() + 1)
+                .transmit(
+                    MSG_TYPE_ID,
+                    &src_buffer,
+                    0,
+                    transmitter.max_msg_length() + 1
+                )
                 .unwrap_err(),
             BroadcastTransmitError::EncodedMessageExceedsMaxMsgLength {
                 max_msg_length: 2,
@@ -229,7 +254,9 @@ mod tests {
 
         const INVALID_MSG_TYPE_ID: i32 = -1;
 
-        let err = transmitter.transmit(INVALID_MSG_TYPE_ID, &src_buffer, 0, 32).unwrap_err();
+        let err = transmitter
+            .transmit(INVALID_MSG_TYPE_ID, &src_buffer, 0, 32)
+            .unwrap_err();
         assert_eq!(
             err,
             BroadcastTransmitError::MessageIdShouldBeGreaterThenZero(INVALID_MSG_TYPE_ID)
@@ -240,7 +267,8 @@ mod tests {
     fn should_transmit_into_empty_buffer() {
         const LENGTH: Index = 8;
         const RECORD_LENGTH: Index = LENGTH + record_descriptor::HEADER_LENGTH;
-        let _aligned_record_length: Index = align(RECORD_LENGTH, record_descriptor::RECORD_ALIGNMENT);
+        let _aligned_record_length: Index =
+            align(RECORD_LENGTH, record_descriptor::RECORD_ALIGNMENT);
         const SRC_INDEX: Index = 0;
 
         let mut test = BroadcastTransmitterTest::new(64);
@@ -250,7 +278,9 @@ mod tests {
         src_buffer.put_bytes(0, &[0, 1, 2, 3, 4, 5, 6, 7]);
 
         //act
-        transmitter.transmit(MSG_TYPE_ID, &src_buffer, SRC_INDEX, LENGTH).unwrap();
+        transmitter
+            .transmit(MSG_TYPE_ID, &src_buffer, SRC_INDEX, LENGTH)
+            .unwrap();
 
         //assert
         dbg!(test.buffer);
@@ -265,7 +295,8 @@ mod tests {
     fn should_transmit_into_used_buffer() {
         const LENGTH: Index = 8;
         const RECORD_LENGTH: Index = LENGTH + record_descriptor::HEADER_LENGTH;
-        let _aligned_record_length: Index = align(RECORD_LENGTH, record_descriptor::RECORD_ALIGNMENT);
+        let _aligned_record_length: Index =
+            align(RECORD_LENGTH, record_descriptor::RECORD_ALIGNMENT);
         const SRC_INDEX: Index = 0;
 
         let mut test = BroadcastTransmitterTest::new(64);
@@ -275,7 +306,9 @@ mod tests {
         src_buffer.put_bytes(0, &[0, 1, 2, 3, 4, 5, 6, 7, 7, 6, 5, 4, 3, 2, 1, 0]);
 
         //act
-        transmitter.transmit(7, &src_buffer, SRC_INDEX, LENGTH).unwrap();
+        transmitter
+            .transmit(7, &src_buffer, SRC_INDEX, LENGTH)
+            .unwrap();
         transmitter.transmit(1024, &src_buffer, 8, LENGTH).unwrap();
 
         //assert
@@ -283,8 +316,8 @@ mod tests {
         assert_eq!(
             test.buffer.as_sub_slice(0, 32),
             &[
-                16, 0, 0, 0, /*type    7*/ 7, 0, 0, 0, /*msg*/ 0, 1, 2, 3, 4, 5, 6, 7, 16, 0, 0, 0,
-                /*type 1024*/ 0, 4, 0, 0, /*msg*/ 7, 6, 5, 4, 3, 2, 1, 0,
+                16, 0, 0, 0, /*type    7*/ 7, 0, 0, 0, /*msg*/ 0, 1, 2, 3, 4, 5, 6, 7,
+                16, 0, 0, 0, /*type 1024*/ 0, 4, 0, 0, /*msg*/ 7, 6, 5, 4, 3, 2, 1, 0,
             ]
         )
 
@@ -300,7 +333,8 @@ mod tests {
         const LENGTH: Index = 1000;
         const RECORD_LENGTH: Index = LENGTH + record_descriptor::HEADER_LENGTH;
 
-        let aligned_record_length: Index = align(RECORD_LENGTH, record_descriptor::RECORD_ALIGNMENT);
+        let aligned_record_length: Index =
+            align(RECORD_LENGTH, record_descriptor::RECORD_ALIGNMENT);
 
         let tail = (CAPACITY - aligned_record_length) as i64;
 
@@ -312,12 +346,16 @@ mod tests {
 
         for i in 0..8 {
             let index = i * 120;
-            transmitter.transmit(MSG_TYPE_ID, &src_buffer, index, 120).unwrap();
+            transmitter
+                .transmit(MSG_TYPE_ID, &src_buffer, index, 120)
+                .unwrap();
         }
 
         src_buffer.put_bytes(LENGTH, &[1; 20]);
 
-        transmitter.transmit(MSG_TYPE_ID, &src_buffer, LENGTH, 16).unwrap();
+        transmitter
+            .transmit(MSG_TYPE_ID, &src_buffer, LENGTH, 16)
+            .unwrap();
         dbg!(test.buffer);
     }
 }

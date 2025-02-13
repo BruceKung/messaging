@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-use crate::command::correlated_message_flyweight::{CorrelatedMessageDefn, CorrelatedMessageFlyweight};
+use crate::command::correlated_message_flyweight::{
+    CorrelatedMessageDefn, CorrelatedMessageFlyweight,
+};
 use crate::concurrent::atomic_buffer::AtomicBuffer;
 use crate::utils::types::Index;
 

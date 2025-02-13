@@ -74,7 +74,11 @@ impl DriverProxy {
         Ok(correlation_id)
     }
 
-    pub fn add_exclusive_publication(&self, channel: CString, stream_id: i32) -> Result<i64, AeronError> {
+    pub fn add_exclusive_publication(
+        &self,
+        channel: CString,
+        stream_id: i32,
+    ) -> Result<i64, AeronError> {
         let correlation_id = self.to_driver_command_buffer.next_correlation_id();
         self.write_command_to_driver(|buffer, length| {
             let mut publication_message = PublicationMessageFlyweight::new(buffer, 0);
@@ -160,7 +164,11 @@ impl DriverProxy {
         })
     }
 
-    pub fn add_destination(&self, publication_registration_id: i64, channel: CString) -> Result<i64, AeronError> {
+    pub fn add_destination(
+        &self,
+        publication_registration_id: i64,
+        channel: CString,
+    ) -> Result<i64, AeronError> {
         let correlation_id = self.to_driver_command_buffer.next_correlation_id();
 
         self.write_command_to_driver(|buffer, length| {
@@ -179,7 +187,11 @@ impl DriverProxy {
         Ok(correlation_id)
     }
 
-    pub fn remove_destination(&self, publication_registration_id: i64, channel: CString) -> Result<i64, AeronError> {
+    pub fn remove_destination(
+        &self,
+        publication_registration_id: i64,
+        channel: CString,
+    ) -> Result<i64, AeronError> {
         let correlation_id = self.to_driver_command_buffer.next_correlation_id();
 
         self.write_command_to_driver(|buffer, length| {
@@ -198,7 +210,11 @@ impl DriverProxy {
         Ok(correlation_id)
     }
 
-    pub fn add_rcv_destination(&self, subscription_registration_id: i64, channel: CString) -> Result<i64, AeronError> {
+    pub fn add_rcv_destination(
+        &self,
+        subscription_registration_id: i64,
+        channel: CString,
+    ) -> Result<i64, AeronError> {
         let correlation_id = self.to_driver_command_buffer.next_correlation_id();
 
         self.write_command_to_driver(|buffer, length| {
@@ -217,7 +233,11 @@ impl DriverProxy {
         Ok(correlation_id)
     }
 
-    pub fn remove_rcv_destination(&self, subscription_registration_id: i64, channel: CString) -> Result<i64, AeronError> {
+    pub fn remove_rcv_destination(
+        &self,
+        subscription_registration_id: i64,
+        channel: CString,
+    ) -> Result<i64, AeronError> {
         let correlation_id = self.to_driver_command_buffer.next_correlation_id();
 
         self.write_command_to_driver(|buffer, length| {
@@ -293,7 +313,11 @@ impl DriverProxy {
         Ok(correlation_id)
     }
 
-    pub fn terminate_driver(&self, token_buffer: *const u8, token_length: Index) -> Result<(), AeronError> {
+    pub fn terminate_driver(
+        &self,
+        token_buffer: *const u8,
+        token_length: Index,
+    ) -> Result<(), AeronError> {
         self.write_command_to_driver(|buffer, length| {
             let mut request = TerminateDriverFlyweight::new(buffer, 0);
 
@@ -315,18 +339,29 @@ impl DriverProxy {
     ) -> Result<(), AeronError> {
         let mut message_buffer = DriverProxyCommandBuffer::default();
 
-        let buffer = AtomicBuffer::new(&mut message_buffer.data[0] as *mut u8, message_buffer.data.len() as Index);
+        let buffer = AtomicBuffer::new(
+            &mut message_buffer.data[0] as *mut u8,
+            message_buffer.data.len() as Index,
+        );
         let mut length = buffer.capacity();
 
         // Filler returns not only msg type but also actual msg length via mut ref length param.
         let msg_type = filler(buffer, &mut length)?;
 
-        if self.to_driver_command_buffer.write(msg_type, buffer, 0, length).is_err() {
+        if self
+            .to_driver_command_buffer
+            .write(msg_type, buffer, 0, length)
+            .is_err()
+        {
             log!(trace, "Driver command {:#x} failed", msg_type);
             return Err(IllegalStateError::CouldNotWriteCommandToDriver.into());
         }
 
-        log!(trace, "Successfully written driver command: {:#x}", msg_type);
+        log!(
+            trace,
+            "Successfully written driver command: {:#x}",
+            msg_type
+        );
 
         Ok(())
     }

@@ -178,8 +178,10 @@ impl ManyToOneRingBuffer {
         // once we claim the required capacity we can write without conflicts
         let record_index = self.claim(required_capacity)?;
 
-        self.buffer
-            .put_ordered::<i64>(record_index, record_descriptor::make_header(-record_len, cmd));
+        self.buffer.put_ordered::<i64>(
+            record_index,
+            record_descriptor::make_header(-record_len, cmd),
+        );
 
         self.buffer.copy_from(
             record_descriptor::encoded_msg_offset(record_index),
@@ -197,7 +199,11 @@ impl ManyToOneRingBuffer {
     /// Read from the ring buffer until either wrap-around or `msg_count_max` messages have been
     /// processed.
     /// Returns the number of messages processed.
-    pub fn read<F: FnMut(AeronCommand, AtomicBuffer)>(&self, mut handler: F, msg_count_limit: i32) -> i32 {
+    pub fn read<F: FnMut(AeronCommand, AtomicBuffer)>(
+        &self,
+        mut handler: F,
+        msg_count_limit: i32,
+    ) -> i32 {
         let head = self.buffer.get_volatile::<i64>(self.head_position);
         let head_index = (head & (self.capacity - 1) as i64) as i32;
         let contiguous_block_len = self.capacity - head_index;
@@ -232,7 +238,8 @@ impl ManyToOneRingBuffer {
             // zero-out memory which was already read.
             self.buffer.set_memory(head_index, bytes_read, 0);
             // advance reader position
-            self.buffer.put_ordered(self.head_position, head + bytes_read as i64);
+            self.buffer
+                .put_ordered(self.head_position, head + bytes_read as i64);
         }
         messages_read
     }
@@ -300,8 +307,10 @@ impl ManyToOneRingBuffer {
         let mut unblocked = false;
         let length: Index = self.buffer.get_volatile(consumer_index);
         if length < 0 {
-            self.buffer
-                .put_ordered(consumer_index, record_descriptor::make_header(-length, AeronCommand::Padding));
+            self.buffer.put_ordered(
+                consumer_index,
+                record_descriptor::make_header(-length, AeronCommand::Padding),
+            );
             unblocked = true;
         } else if length == 0 {
             let limit = if producer_index > consumer_index {
@@ -317,7 +326,10 @@ impl ManyToOneRingBuffer {
                     if self.scan_back_to_confirm_still_zeroed(i, consumer_index) {
                         self.buffer.put_ordered(
                             consumer_index,
-                            record_descriptor::make_header(i - consumer_index, AeronCommand::Padding),
+                            record_descriptor::make_header(
+                                i - consumer_index,
+                                AeronCommand::Padding,
+                            ),
                         );
                         unblocked = true;
                     }
@@ -347,7 +359,8 @@ impl ManyToOneRingBuffer {
                 if required_capacity > (self.capacity - (tail - head) as Index) {
                     return Err(RingBufferError::InsufficientCapacity);
                 }
-                self.buffer.put_ordered::<i64>(self.head_cache_position, head);
+                self.buffer
+                    .put_ordered::<i64>(self.head_cache_position, head);
             }
 
             let mut padding = 0;
@@ -362,19 +375,25 @@ impl ManyToOneRingBuffer {
                     if required_capacity > head_index {
                         return Err(RingBufferError::InsufficientCapacity);
                     }
-                    self.buffer.put_ordered::<i64>(self.head_cache_position, head);
+                    self.buffer
+                        .put_ordered::<i64>(self.head_cache_position, head);
                 }
                 padding = len_to_buffer_end;
             }
             let t2 = tail + required_capacity as i64 + padding as i64;
-            if self.buffer.compare_and_set_i64(self.tail_position, tail, t2) {
+            if self
+                .buffer
+                .compare_and_set_i64(self.tail_position, tail, t2)
+            {
                 break (padding, tail_index);
             }
         };
 
         if padding != 0 {
-            self.buffer
-                .put_ordered::<i64>(tail_index, record_descriptor::make_header(padding, AeronCommand::Padding));
+            self.buffer.put_ordered::<i64>(
+                tail_index,
+                record_descriptor::make_header(padding, AeronCommand::Padding),
+            );
             Ok(0)
         } else {
             Ok(tail_index)
@@ -417,7 +436,9 @@ mod tests {
 
     use super::*;
     use crate::command::control_protocol_events::AeronCommand;
-    use crate::concurrent::ring_buffer::record_descriptor::{make_header, message_type, message_type_id, record_length};
+    use crate::concurrent::ring_buffer::record_descriptor::{
+        make_header, message_type, message_type_id, record_length,
+    };
     use crate::{
         concurrent::atomic_buffer::{AlignedBuffer, AtomicBuffer},
         utils::{bit_utils::align, types::Index},
@@ -498,11 +519,14 @@ mod tests {
     fn ring_buffer_max_message_size_exceeded() {
         let test = Test::new();
         let size = test.ring_buffer.max_msg_len() + 1;
-        let write_res = test
-            .ring_buffer
-            .write(AeronCommand::UnitTestMessageTypeID, test.src_ab, 0, size);
+        let write_res =
+            test.ring_buffer
+                .write(AeronCommand::UnitTestMessageTypeID, test.src_ab, 0, size);
 
-        assert_eq!(write_res.unwrap_err(), RingBufferError::MessageTooLong { msg: 129, max: 128 });
+        assert_eq!(
+            write_res.unwrap_err(),
+            RingBufferError::MessageTooLong { msg: 129, max: 128 }
+        );
     }
 
     #[test]
@@ -513,16 +537,21 @@ mod tests {
         let tail_index: Index = 0;
         let length: Index = 8;
         let expected_record_length: Index = length + record_descriptor::HEADER_LENGTH;
-        let aligned_record_length: Index = align(expected_record_length, record_descriptor::ALIGNMENT);
+        let aligned_record_length: Index =
+            align(expected_record_length, record_descriptor::ALIGNMENT);
 
         test.ring_buffer
             .write(AeronCommand::UnitTestMessageTypeID, test.src_ab, 0, length)
             .unwrap();
 
-        let record_length = test.ab.get::<i32>(record_descriptor::length_offset(tail_index));
+        let record_length = test
+            .ab
+            .get::<i32>(record_descriptor::length_offset(tail_index));
         assert_eq!(record_length, expected_record_length);
 
-        let msg_type = test.ab.get::<i32>(record_descriptor::type_offset(tail_index));
+        let msg_type = test
+            .ab
+            .get::<i32>(record_descriptor::type_offset(tail_index));
         assert_eq!(msg_type, MSG_TYPE_ID);
 
         let tail_counter = test.ab.get::<i64>(TAIL_COUNTER_INDEX);
@@ -535,7 +564,12 @@ mod tests {
 
         let length: Index = 100;
         let head: Index = 0;
-        let tail: Index = head + (CAPACITY as Index - align(length - record_descriptor::ALIGNMENT, record_descriptor::ALIGNMENT));
+        let tail: Index = head
+            + (CAPACITY as Index
+                - align(
+                    length - record_descriptor::ALIGNMENT,
+                    record_descriptor::ALIGNMENT,
+                ));
         let _src_index: Index = 0;
 
         test.ab.put::<i64>(HEAD_COUNTER_INDEX, head as i64);
@@ -596,8 +630,14 @@ mod tests {
             record_descriptor::ALIGNMENT
         );
 
-        assert_eq!(test.ab.get::<i32>(record_descriptor::length_offset(0)), record_length);
-        assert_eq!(test.ab.get::<i32>(record_descriptor::type_offset(0)), MSG_TYPE_ID);
+        assert_eq!(
+            test.ab.get::<i32>(record_descriptor::length_offset(0)),
+            record_length
+        );
+        assert_eq!(
+            test.ab.get::<i32>(record_descriptor::type_offset(0)),
+            MSG_TYPE_ID
+        );
         assert_eq!(
             test.ab.get::<i64>(TAIL_COUNTER_INDEX),
             (tail + aligned_record_length + record_descriptor::ALIGNMENT) as i64
@@ -605,7 +645,8 @@ mod tests {
     }
 
     #[test]
-    fn ring_buffer_should_insert_padding_record_plus_message_on_buffer_wrap_with_head_equal_to_tail() {
+    fn ring_buffer_should_insert_padding_record_plus_message_on_buffer_wrap_with_head_equal_to_tail(
+    ) {
         let test = Test::new();
 
         let length: Index = 100;
@@ -631,8 +672,14 @@ mod tests {
             record_descriptor::ALIGNMENT
         );
 
-        assert_eq!(test.ab.get::<i32>(record_descriptor::length_offset(0)), record_length);
-        assert_eq!(test.ab.get::<i32>(record_descriptor::type_offset(0)), MSG_TYPE_ID);
+        assert_eq!(
+            test.ab.get::<i32>(record_descriptor::length_offset(0)),
+            record_length
+        );
+        assert_eq!(
+            test.ab.get::<i32>(record_descriptor::type_offset(0)),
+            MSG_TYPE_ID
+        );
         assert_eq!(
             test.ab.get::<i64>(TAIL_COUNTER_INDEX),
             (tail + aligned_record_length + record_descriptor::ALIGNMENT) as i64
@@ -671,8 +718,10 @@ mod tests {
         test.ab.put::<i64>(HEAD_COUNTER_INDEX, head as i64);
         test.ab.put::<i64>(TAIL_COUNTER_INDEX, tail as i64);
 
-        test.ab.put::<i32>(record_descriptor::type_offset(0), MSG_TYPE_ID);
-        test.ab.put::<i32>(record_descriptor::length_offset(0), record_length);
+        test.ab
+            .put::<i32>(record_descriptor::type_offset(0), MSG_TYPE_ID);
+        test.ab
+            .put::<i32>(record_descriptor::length_offset(0), record_length);
 
         let mut times_called = 0;
         let handler = |_command, _buffer| times_called += 1;
@@ -682,7 +731,10 @@ mod tests {
         assert_eq!(messages_read, 1);
         assert_eq!(times_called, 1);
 
-        assert_eq!(test.ab.get::<i64>(HEAD_COUNTER_INDEX), (head + aligned_record_length) as i64);
+        assert_eq!(
+            test.ab.get::<i64>(HEAD_COUNTER_INDEX),
+            (head + aligned_record_length) as i64
+        );
 
         for i in (0..record_descriptor::ALIGNMENT).step_by(4) {
             assert_eq!(test.ab.get::<i32>(i), 0);
@@ -700,8 +752,10 @@ mod tests {
         let end_tail: Index = aligned_record_length;
 
         test.ab.put::<i64>(TAIL_COUNTER_INDEX, end_tail as i64);
-        test.ab.put::<i32>(record_descriptor::type_offset(0), MSG_TYPE_ID);
-        test.ab.put::<i32>(record_descriptor::length_offset(0), -record_length);
+        test.ab
+            .put::<i32>(record_descriptor::type_offset(0), MSG_TYPE_ID);
+        test.ab
+            .put::<i32>(record_descriptor::length_offset(0), -record_length);
 
         let mut times_called = 0;
         let handler = |_command, _buffer| times_called += 1;
@@ -727,13 +781,19 @@ mod tests {
         test.ab.put::<i64>(HEAD_COUNTER_INDEX, head as i64);
         test.ab.put::<i64>(TAIL_COUNTER_INDEX, tail as i64);
 
-        test.ab.put::<i32>(record_descriptor::type_offset(0), MSG_TYPE_ID);
-        test.ab.put::<i32>(record_descriptor::length_offset(0), record_length);
+        test.ab
+            .put::<i32>(record_descriptor::type_offset(0), MSG_TYPE_ID);
+        test.ab
+            .put::<i32>(record_descriptor::length_offset(0), record_length);
 
-        test.ab
-            .put::<i32>(record_descriptor::type_offset(aligned_record_length), MSG_TYPE_ID);
-        test.ab
-            .put::<i32>(record_descriptor::length_offset(aligned_record_length), record_length);
+        test.ab.put::<i32>(
+            record_descriptor::type_offset(aligned_record_length),
+            MSG_TYPE_ID,
+        );
+        test.ab.put::<i32>(
+            record_descriptor::length_offset(aligned_record_length),
+            record_length,
+        );
 
         let mut times_called = 0;
         let handler = |_command, _buffer| times_called += 1;
@@ -766,13 +826,19 @@ mod tests {
         test.ab.put::<i64>(HEAD_COUNTER_INDEX, head as i64);
         test.ab.put::<i64>(TAIL_COUNTER_INDEX, tail as i64);
 
-        test.ab.put::<i32>(record_descriptor::type_offset(0), MSG_TYPE_ID);
-        test.ab.put::<i32>(record_descriptor::length_offset(0), record_length);
+        test.ab
+            .put::<i32>(record_descriptor::type_offset(0), MSG_TYPE_ID);
+        test.ab
+            .put::<i32>(record_descriptor::length_offset(0), record_length);
 
-        test.ab
-            .put::<i32>(record_descriptor::type_offset(aligned_record_length), MSG_TYPE_ID);
-        test.ab
-            .put::<i32>(record_descriptor::length_offset(aligned_record_length), record_length);
+        test.ab.put::<i32>(
+            record_descriptor::type_offset(aligned_record_length),
+            MSG_TYPE_ID,
+        );
+        test.ab.put::<i32>(
+            record_descriptor::length_offset(aligned_record_length),
+            record_length,
+        );
 
         let mut times_called = 0;
         let handler = |_command, _buffer| times_called += 1;
@@ -782,13 +848,17 @@ mod tests {
         assert_eq!(messages_read, 1);
         assert_eq!(times_called, 1);
 
-        assert_eq!(test.ab.get::<i64>(HEAD_COUNTER_INDEX), (head + aligned_record_length) as i64);
+        assert_eq!(
+            test.ab.get::<i64>(HEAD_COUNTER_INDEX),
+            (head + aligned_record_length) as i64
+        );
 
         for i in (0..record_descriptor::ALIGNMENT).step_by(4) {
             assert_eq!(test.ab.get::<i32>(i), 0);
         }
         assert_eq!(
-            test.ab.get::<i32>(record_descriptor::length_offset(aligned_record_length)),
+            test.ab
+                .get::<i32>(record_descriptor::length_offset(aligned_record_length)),
             record_length
         );
     }
@@ -806,13 +876,19 @@ mod tests {
         test.ab.put::<i64>(HEAD_COUNTER_INDEX, head as i64);
         test.ab.put::<i64>(TAIL_COUNTER_INDEX, tail as i64);
 
-        test.ab.put::<i32>(record_descriptor::type_offset(0), MSG_TYPE_ID);
-        test.ab.put::<i32>(record_descriptor::length_offset(0), record_length);
+        test.ab
+            .put::<i32>(record_descriptor::type_offset(0), MSG_TYPE_ID);
+        test.ab
+            .put::<i32>(record_descriptor::length_offset(0), record_length);
 
-        test.ab
-            .put::<i32>(record_descriptor::type_offset(aligned_record_length), MSG_TYPE_ID);
-        test.ab
-            .put::<i32>(record_descriptor::length_offset(aligned_record_length), record_length);
+        test.ab.put::<i32>(
+            record_descriptor::type_offset(aligned_record_length),
+            MSG_TYPE_ID,
+        );
+        test.ab.put::<i32>(
+            record_descriptor::length_offset(aligned_record_length),
+            record_length,
+        );
 
         let mut times_called = 0;
 
@@ -864,8 +940,10 @@ mod tests {
         test.ab.put::<i64>(HEAD_COUNTER_INDEX, head as i64);
         test.ab.put::<i64>(TAIL_COUNTER_INDEX, tail as i64);
 
-        test.ab.put::<i32>(record_descriptor::type_offset(head), MSG_TYPE_ID);
-        test.ab.put::<i32>(record_descriptor::length_offset(head), -message_length);
+        test.ab
+            .put::<i32>(record_descriptor::type_offset(head), MSG_TYPE_ID);
+        test.ab
+            .put::<i32>(record_descriptor::length_offset(head), -message_length);
 
         assert!(test.ring_buffer.unblock());
 
@@ -873,10 +951,19 @@ mod tests {
             test.ab.get::<i32>(record_descriptor::type_offset(head)),
             AeronCommand::Padding as i32
         );
-        assert_eq!(test.ab.get::<i32>(record_descriptor::length_offset(head)), message_length);
+        assert_eq!(
+            test.ab.get::<i32>(record_descriptor::length_offset(head)),
+            message_length
+        );
 
-        assert_eq!(test.ab.get::<i64>(HEAD_COUNTER_INDEX), message_length as i64);
-        assert_eq!(test.ab.get::<i64>(TAIL_COUNTER_INDEX), (message_length * 2) as i64);
+        assert_eq!(
+            test.ab.get::<i64>(HEAD_COUNTER_INDEX),
+            message_length as i64
+        );
+        assert_eq!(
+            test.ab.get::<i64>(TAIL_COUNTER_INDEX),
+            (message_length * 2) as i64
+        );
     }
 
     #[test]
@@ -890,8 +977,10 @@ mod tests {
         test.ab.put::<i64>(HEAD_COUNTER_INDEX, head as i64);
         test.ab.put::<i64>(TAIL_COUNTER_INDEX, tail as i64);
 
-        test.ab
-            .put::<i32>(record_descriptor::length_offset(message_length * 2), message_length);
+        test.ab.put::<i32>(
+            record_descriptor::length_offset(message_length * 2),
+            message_length,
+        );
 
         assert!(test.ring_buffer.unblock());
 
@@ -899,14 +988,24 @@ mod tests {
             test.ab.get::<i32>(record_descriptor::type_offset(head)),
             AeronCommand::Padding as i32
         );
-        assert_eq!(test.ab.get::<i32>(record_descriptor::length_offset(head)), message_length);
+        assert_eq!(
+            test.ab.get::<i32>(record_descriptor::length_offset(head)),
+            message_length
+        );
 
-        assert_eq!(test.ab.get::<i64>(HEAD_COUNTER_INDEX), message_length as i64);
-        assert_eq!(test.ab.get::<i64>(TAIL_COUNTER_INDEX), (message_length * 3) as i64);
+        assert_eq!(
+            test.ab.get::<i64>(HEAD_COUNTER_INDEX),
+            message_length as i64
+        );
+        assert_eq!(
+            test.ab.get::<i64>(TAIL_COUNTER_INDEX),
+            (message_length * 3) as i64
+        );
     }
 
     #[test]
-    fn ring_buffer_should_not_unblock_gap_with_message_race_on_second_message_increasing_tail_then_interrupting() {
+    fn ring_buffer_should_not_unblock_gap_with_message_race_on_second_message_increasing_tail_then_interrupting(
+    ) {
         let test = Test::new();
 
         let message_length: Index = record_descriptor::ALIGNMENT * 4;
@@ -957,14 +1056,20 @@ mod tests {
             }));
         }
 
-        threads.into_iter().for_each(|thread| thread.join().unwrap());
-        assert_eq!(ring_buffer.next_correlation_id(), NUM_IDS_PER_THREAD * NUM_PUBLISHERS);
+        threads
+            .into_iter()
+            .for_each(|thread| thread.join().unwrap());
+        assert_eq!(
+            ring_buffer.next_correlation_id(),
+            NUM_IDS_PER_THREAD * NUM_PUBLISHERS
+        );
     }
 
     lazy_static! {
         pub static ref PUB_COUNT_DOWN2: AtomicI64 = AtomicI64::new(NUM_PUBLISHERS);
         pub static ref PUBLISHER_ID: AtomicI32 = AtomicI32::new(0);
-        pub static ref COUNTS: Arc<Mutex<[i32; NUM_PUBLISHERS as usize]>> = Arc::new(Mutex::new([0; NUM_PUBLISHERS as usize]));
+        pub static ref COUNTS: Arc<Mutex<[i32; NUM_PUBLISHERS as usize]>> =
+            Arc::new(Mutex::new([0; NUM_PUBLISHERS as usize]));
     }
 
     const NUM_MESSAGES_PER_PUBLISHER: i64 = 10000; // * 1000;
@@ -1003,7 +1108,12 @@ mod tests {
                 for i in 0..NUM_MESSAGES_PER_PUBLISHER {
                     src_ab.put::<i32>(message_num_offset, i as i32);
                     while ring_buffer
-                        .write(AeronCommand::UnitTestMessageTypeID, src_ab, 0, message_length)
+                        .write(
+                            AeronCommand::UnitTestMessageTypeID,
+                            src_ab,
+                            0,
+                            message_length,
+                        )
                         .is_err()
                     {
                         std::thread::yield_now();
@@ -1027,7 +1137,10 @@ mod tests {
         };
 
         while msg_count < NUM_MESSAGES_PER_PUBLISHER * NUM_PUBLISHERS {
-            let read_count = ring_buffer.read(handler, (NUM_MESSAGES_PER_PUBLISHER * NUM_PUBLISHERS) as i32);
+            let read_count = ring_buffer.read(
+                handler,
+                (NUM_MESSAGES_PER_PUBLISHER * NUM_PUBLISHERS) as i32,
+            );
 
             if 0 == read_count {
                 std::thread::sleep(Duration::from_millis(1));
@@ -1036,7 +1149,9 @@ mod tests {
             msg_count += read_count as i64;
         }
 
-        threads.into_iter().for_each(|thread| thread.join().unwrap());
+        threads
+            .into_iter()
+            .for_each(|thread| thread.join().unwrap());
     }
 
     #[test]

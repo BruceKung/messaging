@@ -68,7 +68,8 @@ impl CopyBroadcastReceiver {
 
             let msg = AeronCommand::from_command_id(receiver.type_id());
 
-            self.scratch_buffer.copy_from(0, receiver.buffer(), receiver.offset(), length);
+            self.scratch_buffer
+                .copy_from(0, receiver.buffer(), receiver.offset(), length);
 
             if !receiver.validate() {
                 return Err(BroadcastTransmitError::UnableToKeepUpWithBroadcastBuffer);

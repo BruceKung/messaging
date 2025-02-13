@@ -1,14 +1,17 @@
-use std::{
-    ffi::CString,
-    slice,
-    sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}},
-};
-use std::thread;
 use crate::base::settings::Settings;
 use crate::base::utils::str_to_c;
 use crate::core::messaging::Messaging;
 use crate::publisher::publisher::Publisher;
 use crate::subscriber::subscriber::Subscriber;
+use std::thread;
+use std::{
+    ffi::CString,
+    slice,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
+};
 
 use aeron_rs::{
     aeron::Aeron,
@@ -28,7 +31,7 @@ use anyhow::{bail, Result};
 use crossbeam::channel::Sender;
 
 pub struct Requester {
-    pub publisher : Arc<Publisher>,
+    pub publisher: Arc<Publisher>,
     pub subscriber: Arc<Subscriber>,
 }
 
@@ -39,12 +42,20 @@ impl Requester {
         request_stream_id: i32,
         response_stream_id: i32,
         sender: Sender<Vec<u8>>,
-        stop : Arc<AtomicBool>
+        stop: Arc<AtomicBool>,
     ) -> Self {
-
-        println!("Adding requester to Aeron with channel {} and stream id {},{}", channel, request_stream_id,response_stream_id);
+        println!(
+            "Adding requester to Aeron with channel {} and stream id {},{}",
+            channel, request_stream_id, response_stream_id
+        );
         let publisher = Arc::new(Publisher::new(aeron.clone(), channel, request_stream_id));
-        let subscriber = Arc::new(Subscriber::new(aeron.clone(), channel, response_stream_id, sender, stop.clone()));
+        let subscriber = Arc::new(Subscriber::new(
+            aeron.clone(),
+            channel,
+            response_stream_id,
+            sender,
+            stop.clone(),
+        ));
 
         Self {
             publisher,
@@ -55,16 +66,13 @@ impl Requester {
     pub fn is_connected(&self) -> bool {
         self.publisher.is_connected() && self.subscriber.is_connected()
     }
-    
+
     pub fn send(&self, data: &[u8], len: i32) -> anyhow::Result<()> {
         self.publisher.clone().publish(data, len)
     }
 
-    pub fn release (&self) {
+    pub fn release(&self) {
         self.publisher.release();
         self.subscriber.release();
     }
-    
-
 }
-

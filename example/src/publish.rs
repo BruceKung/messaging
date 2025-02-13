@@ -1,13 +1,14 @@
-use std::ffi::CString;
 use clap::Parser;
-use messaging::core::messaging::Messaging;
 use messaging::base::settings::Settings;
+use messaging::core::messaging::Messaging;
 use messaging::publisher::publisher::Publisher;
 use messaging::subscriber::subscriber::Subscriber;
+use std::ffi::CString;
 
 use protobuf::Message;
 
-#[path = "test.rs"] mod test;
+#[path = "test.rs"]
+mod test;
 
 fn create_order() -> test::OrderInfo {
     test::OrderInfo {
@@ -51,7 +52,6 @@ fn create_order() -> test::OrderInfo {
     }
 }
 
-
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -65,11 +65,11 @@ struct Args {
 
 pub fn main() {
     pretty_env_logger::init();
-    
+
     let args = Args::parse();
     let dir_prefix = args.dir_prefix.unwrap_or("".to_string());
 
-    let setting = Settings{
+    let setting = Settings {
         dir_prefix,
         channel: "aeron:ipc".to_string(),
         stream_id: 1001,
@@ -98,16 +98,15 @@ pub fn main() {
 
     println!("Publisher connected");
 
-    let mut index : i64 = 0;
+    let mut index: i64 = 0;
     loop {
-
         let mut o = create_order();
         o.id = index;
-        o.tag  = args.instance.as_ref().unwrap().clone();
+        o.tag = args.instance.as_ref().unwrap().clone();
 
         let data = o.write_to_bytes().unwrap();
 
-        match publiser.clone().publish( data.as_slice(), data.len() as i32) {
+        match publiser.clone().publish(data.as_slice(), data.len() as i32) {
             Ok(_) => {}
             Err(e) => {
                 println!("Error: {:?}", e);

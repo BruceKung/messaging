@@ -31,7 +31,10 @@ use aeron_rs::{
         strategies::{BusySpinIdleStrategy, Strategy},
     },
     context::Context,
-    example_config::{DEFAULT_FRAGMENT_COUNT_LIMIT, DEFAULT_MESSAGE_LENGTH, DEFAULT_PING_CHANNEL, DEFAULT_PING_STREAM_ID},
+    example_config::{
+        DEFAULT_FRAGMENT_COUNT_LIMIT, DEFAULT_MESSAGE_LENGTH, DEFAULT_PING_CHANNEL,
+        DEFAULT_PING_STREAM_ID,
+    },
     fragment_assembler::FragmentAssembler,
     image::Image,
     publication::Publication,
@@ -59,7 +62,12 @@ fn sig_int_handler() {
 #[derive(StructOpt, Clone, Debug)]
 #[structopt(name = "Aeron ping")]
 struct CmdOpts {
-    #[structopt(short = "p", long = "dir", default_value = "", help = "Prefix directory for aeron driver")]
+    #[structopt(
+        short = "p",
+        long = "dir",
+        default_value = "",
+        help = "Prefix directory for aeron driver"
+    )]
     dir_prefix: String,
     #[structopt(short = "c", long = "ping_channel", default_value = DEFAULT_PING_CHANNEL, help = "Ping channel")]
     ping_channel: String,
@@ -69,7 +77,12 @@ struct CmdOpts {
     ping_stream_id: i32,
     #[structopt(short = "S", long, default_value = DEFAULT_PING_STREAM_ID, help = "Pong Stream ID")]
     pong_stream_id: i32,
-    #[structopt(short = "w", long, default_value = "0", help = "Number of Messages for warmup")]
+    #[structopt(
+        short = "w",
+        long,
+        default_value = "0",
+        help = "Number of Messages for warmup"
+    )]
     number_of_warmup_messages: i64,
     #[structopt(short = "m", long, default_value = "100", help = "Number of Messages")]
     number_of_messages: i64,
@@ -98,7 +111,10 @@ fn send_ping_and_receive_pong(
             // timestamps in the message are relative to this app, so just send the timepoint directly.
             let mut start = Instant::now();
             unsafe {
-                let slice = ::std::slice::from_raw_parts(&mut start as *mut Instant as *mut u8, std::mem::size_of_val(&start));
+                let slice = ::std::slice::from_raw_parts(
+                    &mut start as *mut Instant as *mut u8,
+                    std::mem::size_of_val(&start),
+                );
                 src_buffer.put_bytes(0, slice);
             }
             let position = publication
@@ -135,10 +151,20 @@ fn send_ping_and_receive_pong(
 }
 
 fn on_new_subscription_handler(channel: CString, stream_id: i32, correlation_id: i64) {
-    println!("Subscription: {} {} {}", channel.to_str().unwrap(), stream_id, correlation_id);
+    println!(
+        "Subscription: {} {} {}",
+        channel.to_str().unwrap(),
+        stream_id,
+        correlation_id
+    );
 }
 
-fn on_new_publication_handler(channel: CString, stream_id: i32, session_id: i32, correlation_id: i64) {
+fn on_new_publication_handler(
+    channel: CString,
+    stream_id: i32,
+    session_id: i32,
+    correlation_id: i64,
+) {
     println!(
         "Publication: {} {} {} {}",
         channel.to_str().unwrap(),
@@ -266,7 +292,9 @@ fn main() {
             warmup_settings.number_of_warmup_messages, warmup_settings.message_length
         );
 
-        let mut handler_f = |_buffer: &AtomicBuffer, _offset, _length, _header: &Header| println!("fragment_assembler called");
+        let mut handler_f = |_buffer: &AtomicBuffer, _offset, _length, _header: &Header| {
+            println!("fragment_assembler called")
+        };
 
         let mut fragment_assembler = FragmentAssembler::new(&mut handler_f, None);
 
@@ -285,19 +313,23 @@ fn main() {
     loop {
         HISTOGRAMM.lock().unwrap().reset();
 
-        let mut handler_f = |buffer: &AtomicBuffer, offset: Index, _length: Index, _header: &Header| {
-            let end = Instant::now();
-            let mut start = Instant::now(); // Just to init it
+        let mut handler_f =
+            |buffer: &AtomicBuffer, offset: Index, _length: Index, _header: &Header| {
+                let end = Instant::now();
+                let mut start = Instant::now(); // Just to init it
 
-            buffer.get_bytes(
-                offset,
-                &mut start as *mut Instant as *mut u8,
-                std::mem::size_of_val(&start) as i32,
-            );
-            let nano_rtt = end - start;
+                buffer.get_bytes(
+                    offset,
+                    &mut start as *mut Instant as *mut u8,
+                    std::mem::size_of_val(&start) as i32,
+                );
+                let nano_rtt = end - start;
 
-            let _ignored = HISTOGRAMM.lock().unwrap().record(nano_rtt.as_nanos() as u64);
-        };
+                let _ignored = HISTOGRAMM
+                    .lock()
+                    .unwrap()
+                    .record(nano_rtt.as_nanos() as u64);
+            };
 
         let mut fragment_assembler = FragmentAssembler::new(&mut handler_f, None);
 

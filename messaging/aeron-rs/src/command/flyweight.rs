@@ -56,7 +56,8 @@ impl<T: Copy> Flyweight<T> {
 
     #[inline]
     pub fn get_bytes(&self, offset: Index, dest: *mut u8, length: Index) {
-        self.buffer.get_bytes(self.base_offset + offset, dest, length);
+        self.buffer
+            .get_bytes(self.base_offset + offset, dest, length);
     }
 
     #[inline]

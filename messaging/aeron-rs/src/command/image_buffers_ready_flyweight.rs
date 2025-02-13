@@ -124,7 +124,8 @@ impl ImageBuffersReadyFlyweight {
     fn source_identity_offset(&self) -> Index {
         let offset = self.log_file_name_offset();
         let alignment = I32_SIZE;
-        let log_file_name_length = bit_utils::align(self.flyweight.string_get_length(offset), alignment);
+        let log_file_name_length =
+            bit_utils::align(self.flyweight.string_get_length(offset), alignment);
 
         offset + alignment + log_file_name_length
     }

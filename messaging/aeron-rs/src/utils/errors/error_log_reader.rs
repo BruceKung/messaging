@@ -43,8 +43,8 @@ where
             break;
         }
 
-        let last_observation_timestamp =
-            buffer.get_volatile::<i64>(offset + *error_log_descriptor::LAST_OBSERVATION_TIMESTAMP_OFFSET);
+        let last_observation_timestamp = buffer
+            .get_volatile::<i64>(offset + *error_log_descriptor::LAST_OBSERVATION_TIMESTAMP_OFFSET);
 
         if last_observation_timestamp >= since_timestamp {
             let entry = buffer.overlay_struct::<error_log_descriptor::ErrorLogEntryDefn>(offset);

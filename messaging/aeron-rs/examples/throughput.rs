@@ -33,8 +33,8 @@ use aeron_rs::{
     },
     context::Context,
     example_config::{
-        DEFAULT_CHANNEL, DEFAULT_FRAGMENT_COUNT_LIMIT, DEFAULT_LINGER_TIMEOUT_MS, DEFAULT_MESSAGE_LENGTH,
-        DEFAULT_NUMBER_OF_MESSAGES, DEFAULT_STREAM_ID,
+        DEFAULT_CHANNEL, DEFAULT_FRAGMENT_COUNT_LIMIT, DEFAULT_LINGER_TIMEOUT_MS,
+        DEFAULT_MESSAGE_LENGTH, DEFAULT_NUMBER_OF_MESSAGES, DEFAULT_STREAM_ID,
     },
     fragment_assembler::FragmentAssembler,
     image::Image,
@@ -57,7 +57,12 @@ fn sig_int_handler() {
 #[derive(StructOpt, Clone, Debug)]
 #[structopt(name = "Aeron throughput measurement tool")]
 struct CmdOpts {
-    #[structopt(short = "p", long = "dir", default_value = "", help = "Prefix directory for aeron driver")]
+    #[structopt(
+        short = "p",
+        long = "dir",
+        default_value = "",
+        help = "Prefix directory for aeron driver"
+    )]
     dir_prefix: String,
     #[structopt(short = "c", long = "channel", default_value = DEFAULT_CHANNEL, help = "Channel")]
     channel: String,
@@ -92,10 +97,20 @@ fn print_rate(messages_per_sec: f64, bytes_per_sec: f64, total_fragments: u64, t
 }
 
 fn on_new_subscription_handler(channel: CString, stream_id: i32, correlation_id: i64) {
-    println!("Subscription: {} {} {}", channel.to_str().unwrap(), stream_id, correlation_id);
+    println!(
+        "Subscription: {} {} {}",
+        channel.to_str().unwrap(),
+        stream_id,
+        correlation_id
+    );
 }
 
-fn on_new_publication_handler(channel: CString, stream_id: i32, session_id: i32, correlation_id: i64) {
+fn on_new_publication_handler(
+    channel: CString,
+    stream_id: i32,
+    session_id: i32,
+    correlation_id: i64,
+) {
     println!(
         "Publication: {} {} {} {}",
         channel.to_str().unwrap(),
@@ -223,16 +238,20 @@ fn main() {
     let poll_thread = thread::Builder::new()
         .name(String::from("Poll thread"))
         .spawn(move || {
-            let mut rate_reporter_handler = move |_buffer: &AtomicBuffer, _offset: Index, length: Index, _header: &Header| {
-                let mut reporter = rate_reporter_for_poll_thread.lock().unwrap();
-                reporter.on_message(1, length as u64);
-            };
+            let mut rate_reporter_handler =
+                move |_buffer: &AtomicBuffer, _offset: Index, length: Index, _header: &Header| {
+                    let mut reporter = rate_reporter_for_poll_thread.lock().unwrap();
+                    reporter.on_message(1, length as u64);
+                };
 
             let mut fragment_assembler = FragmentAssembler::new(&mut rate_reporter_handler, None);
             let mut fragment_handler = fragment_assembler.handler();
 
             while RUNNING.load(Ordering::SeqCst) {
-                let fragments_read = subscription.lock().unwrap().poll(&mut fragment_handler, fragment_count_limit);
+                let fragments_read = subscription
+                    .lock()
+                    .unwrap()
+                    .poll(&mut fragment_handler, fragment_count_limit);
 
                 poll_idle_strategy.idle_opt(fragments_read);
             }

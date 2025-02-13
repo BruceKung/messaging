@@ -45,7 +45,11 @@ impl AtomicCounter {
         selfy
     }
 
-    pub fn new_opt(buffer: AtomicBuffer, counter_id: i32, counters_mgr: Arc<Mutex<CountersManager>>) -> Self {
+    pub fn new_opt(
+        buffer: AtomicBuffer,
+        counter_id: i32,
+        counters_mgr: Arc<Mutex<CountersManager>>,
+    ) -> Self {
         let selfy = Self {
             buffer,
             counter_id,
@@ -88,7 +92,8 @@ impl AtomicCounter {
 
     pub fn get_and_add_ordered(&self, increment: i64) -> i64 {
         let current_value = self.buffer.get::<i64>(self.offset);
-        self.buffer.put_ordered::<i64>(self.offset, current_value + increment);
+        self.buffer
+            .put_ordered::<i64>(self.offset, current_value + increment);
         current_value
     }
 
@@ -99,7 +104,8 @@ impl AtomicCounter {
     }
 
     pub fn compare_and_set(&self, expected_value: i64, update_value: i64) -> bool {
-        self.buffer.compare_and_set_i64(self.offset, expected_value, update_value)
+        self.buffer
+            .compare_and_set_i64(self.offset, expected_value, update_value)
     }
 
     pub fn get(&self) -> i64 {
@@ -114,7 +120,9 @@ impl AtomicCounter {
 impl Drop for AtomicCounter {
     fn drop(&mut self) {
         if let Some(mgr) = &self.counters_manager {
-            mgr.lock().expect("Can't lock mutex on counters_mgr").free(self.counter_id);
+            mgr.lock()
+                .expect("Can't lock mutex on counters_mgr")
+                .free(self.counter_id);
         }
     }
 }

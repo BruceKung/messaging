@@ -50,7 +50,12 @@ fn error_handler(error: AeronError) {
     println!("Error: {:?}", error);
 }
 
-fn on_new_publication_handler(channel: CString, stream_id: i32, session_id: i32, correlation_id: i64) {
+fn on_new_publication_handler(
+    channel: CString,
+    stream_id: i32,
+    session_id: i32,
+    correlation_id: i64,
+) {
     println!(
         "Publication: {} {} {} {}",
         channel.to_str().unwrap(),
@@ -85,13 +90,21 @@ fn test_publication_create() {
     }
 
     // At this point publication must be created and be available for publishing
-    assert_eq!(publication.unwrap().lock().unwrap().channel_status(), CHANNEL_ENDPOINT_ACTIVE);
+    assert_eq!(
+        publication.unwrap().lock().unwrap().channel_status(),
+        CHANNEL_ENDPOINT_ACTIVE
+    );
 
     common::stop_aeron_md(md);
 }
 
 fn on_new_subscription_handler(channel: CString, stream_id: i32, correlation_id: i64) {
-    println!("Subscription: {} {} {}", channel.to_str().unwrap(), stream_id, correlation_id);
+    println!(
+        "Subscription: {} {} {}",
+        channel.to_str().unwrap(),
+        stream_id,
+        correlation_id
+    );
 }
 
 #[test]
@@ -131,12 +144,21 @@ lazy_static! {
     pub static ref ON_NEW_FRAGMENT_CALLED: AtomicBool = AtomicBool::from(false);
 }
 
-fn on_new_fragment_check_payload(buffer: &AtomicBuffer, offset: Index, length: Index, _header: &Header) {
+fn on_new_fragment_check_payload(
+    buffer: &AtomicBuffer,
+    offset: Index,
+    length: Index,
+    _header: &Header,
+) {
     ON_NEW_FRAGMENT_CALLED.store(true, Ordering::SeqCst);
     assert_eq!(length, 256);
-    println!("on_new_fragment_check_payload: incoming fragment with {} length", length);
+    println!(
+        "on_new_fragment_check_payload: incoming fragment with {} length",
+        length
+    );
     unsafe {
-        let slice_msg = slice::from_raw_parts_mut(buffer.buffer().offset(offset as isize), length as usize);
+        let slice_msg =
+            slice::from_raw_parts_mut(buffer.buffer().offset(offset as isize), length as usize);
         for i in 0..length {
             assert_eq!(i as u8, slice_msg[i as usize]);
         }
@@ -183,8 +205,14 @@ fn test_unfragmented_msg() {
     let publication = publication.unwrap();
 
     // At this point publication must be created and be available for publishing
-    assert_eq!(subscription.lock().unwrap().channel_status(), CHANNEL_ENDPOINT_ACTIVE);
-    assert_eq!(publication.lock().unwrap().channel_status(), CHANNEL_ENDPOINT_ACTIVE);
+    assert_eq!(
+        subscription.lock().unwrap().channel_status(),
+        CHANNEL_ENDPOINT_ACTIVE
+    );
+    assert_eq!(
+        publication.lock().unwrap().channel_status(),
+        CHANNEL_ENDPOINT_ACTIVE
+    );
 
     let buffer = AlignedBuffer::with_capacity(256);
     let src_buffer = AtomicBuffer::from_aligned(&buffer);
@@ -205,7 +233,10 @@ fn test_unfragmented_msg() {
     let idle_strategy = SleepingIdleStrategy::new(1000);
 
     for _i in 0..3 {
-        let fragments_read = subscription.lock().expect("Fu").poll(&mut on_new_fragment_check_payload, 10);
+        let fragments_read = subscription
+            .lock()
+            .expect("Fu")
+            .poll(&mut on_new_fragment_check_payload, 10);
         if fragments_read > 0 {
             break;
         }
@@ -264,8 +295,14 @@ fn test_fragmented_msg() {
     let publication = publication.unwrap();
 
     // At this point publication must be created and be available for publishing
-    assert_eq!(subscription.lock().unwrap().channel_status(), CHANNEL_ENDPOINT_ACTIVE);
-    assert_eq!(publication.lock().unwrap().channel_status(), CHANNEL_ENDPOINT_ACTIVE);
+    assert_eq!(
+        subscription.lock().unwrap().channel_status(),
+        CHANNEL_ENDPOINT_ACTIVE
+    );
+    assert_eq!(
+        publication.lock().unwrap().channel_status(),
+        CHANNEL_ENDPOINT_ACTIVE
+    );
 
     let buffer = AlignedBuffer::with_capacity(256);
     let src_buffer = AtomicBuffer::from_aligned(&buffer);
@@ -288,7 +325,8 @@ fn test_fragmented_msg() {
         println!("Checking reassembled message of length {}", length);
         assert_eq!(length, 256);
         unsafe {
-            let slice_msg = slice::from_raw_parts_mut(buffer.buffer().offset(offset as isize), length as usize);
+            let slice_msg =
+                slice::from_raw_parts_mut(buffer.buffer().offset(offset as isize), length as usize);
             for i in 0..length {
                 assert_eq!(i as u8, slice_msg[i as usize]);
             }
@@ -316,7 +354,12 @@ lazy_static! {
 
 #[allow(dead_code)]
 #[allow(clippy::cast_ptr_alignment)]
-fn on_new_fragment_check_seq_no(buffer: &AtomicBuffer, offset: Index, length: Index, _header: &Header) {
+fn on_new_fragment_check_seq_no(
+    buffer: &AtomicBuffer,
+    offset: Index,
+    length: Index,
+    _header: &Header,
+) {
     assert_eq!(length, I64_SIZE);
 
     let prev_seq_no = LAST_RECEIVED_SEQ_NO.load(Ordering::SeqCst);
@@ -378,15 +421,24 @@ fn test_sequential_consistency() {
     let publication = publication.unwrap();
 
     // At this point publication must be created and be available for publishing
-    assert_eq!(subscription.lock().unwrap().channel_status(), CHANNEL_ENDPOINT_ACTIVE);
-    assert_eq!(publication.lock().unwrap().channel_status(), CHANNEL_ENDPOINT_ACTIVE);
+    assert_eq!(
+        subscription.lock().unwrap().channel_status(),
+        CHANNEL_ENDPOINT_ACTIVE
+    );
+    assert_eq!(
+        publication.lock().unwrap().channel_status(),
+        CHANNEL_ENDPOINT_ACTIVE
+    );
 
     let subscriber_thread = thread::Builder::new()
         .name(String::from("Subscriber thread"))
         .spawn(move || {
             let poll_idle_strategy = BusySpinIdleStrategy::default();
             for _messages_received in 0..messages_to_send {
-                let fragments_read = subscription.lock().unwrap().poll(&mut on_new_fragment_check_seq_no, 100);
+                let fragments_read = subscription
+                    .lock()
+                    .unwrap()
+                    .poll(&mut on_new_fragment_check_seq_no, 100);
 
                 poll_idle_strategy.idle_opt(fragments_read);
             }
@@ -399,11 +451,18 @@ fn test_sequential_consistency() {
     for seq_no in 0..messages_to_send {
         offer_idle_strategy.reset();
 
-        while publication.lock().unwrap().try_claim(I64_SIZE, &mut buffer_claim).is_err() {
+        while publication
+            .lock()
+            .unwrap()
+            .try_claim(I64_SIZE, &mut buffer_claim)
+            .is_err()
+        {
             offer_idle_strategy.idle();
         }
 
-        buffer_claim.buffer().put::<i64>(buffer_claim.offset(), seq_no);
+        buffer_claim
+            .buffer()
+            .put::<i64>(buffer_claim.offset(), seq_no);
         buffer_claim.commit();
     }
 

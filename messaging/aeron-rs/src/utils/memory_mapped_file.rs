@@ -33,7 +33,10 @@ pub struct FileHandle {
 }
 
 impl FileHandle {
-    fn open<P: AsRef<Path> + Into<OsString>>(filename: P, read_only: bool) -> Result<FileHandle, AeronError> {
+    fn open<P: AsRef<Path> + Into<OsString>>(
+        filename: P,
+        read_only: bool,
+    ) -> Result<FileHandle, AeronError> {
         let file_path: OsString = filename.into();
         let file = OpenOptions::new()
             .read(true)
@@ -46,7 +49,10 @@ impl FileHandle {
             .map(move |mmap| Self { mmap, file_path })
     }
 
-    fn create<P: AsRef<Path> + Into<OsString>>(filename: P, size: Index) -> Result<FileHandle, AeronError> {
+    fn create<P: AsRef<Path> + Into<OsString>>(
+        filename: P,
+        size: Index,
+    ) -> Result<FileHandle, AeronError> {
         let file_path: OsString = filename.into();
         let file = OpenOptions::new()
             .read(true)
@@ -55,7 +61,8 @@ impl FileHandle {
             .open(&file_path)
             .map_err(AeronError::MemMappedFileError)?;
 
-        file.set_len(size as u64).map_err(AeronError::MemMappedFileError)?;
+        file.set_len(size as u64)
+            .map_err(AeronError::MemMappedFileError)?;
 
         unsafe { MmapMut::map_mut(&file) }
             .map_err(AeronError::MemMappedFileError)
@@ -87,13 +94,22 @@ impl MemoryMappedFile {
         Ok(metadata.len())
     }
 
-    pub fn create_new<P: AsRef<Path> + Into<OsString>>(path: P, offset: Index, size: Index) -> Result<Self, AeronError> {
+    pub fn create_new<P: AsRef<Path> + Into<OsString>>(
+        path: P,
+        offset: Index,
+        size: Index,
+    ) -> Result<Self, AeronError> {
         let fd = FileHandle::create(path, size)?;
         //todo fill
         Self::from_file_handle(fd, offset, size, false)
     }
 
-    fn from_file_handle(mut fd: FileHandle, offset: Index, mut length: Index, _read_only: bool) -> Result<Self, AeronError> {
+    fn from_file_handle(
+        mut fd: FileHandle,
+        offset: Index,
+        mut length: Index,
+        _read_only: bool,
+    ) -> Result<Self, AeronError> {
         if 0 == length && 0 == offset {
             length = Self::get_file_size(&fd.file_path)? as Index;
         }
@@ -107,7 +123,10 @@ impl MemoryMappedFile {
         Ok(mmf)
     }
 
-    pub fn map_existing<P: AsRef<Path> + Into<OsString>>(filename: P, read_only: bool) -> Result<MemoryMappedFile, AeronError> {
+    pub fn map_existing<P: AsRef<Path> + Into<OsString>>(
+        filename: P,
+        read_only: bool,
+    ) -> Result<MemoryMappedFile, AeronError> {
         Self::map_existing_part(filename, 0, 0, read_only)
     }
 

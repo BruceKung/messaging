@@ -54,10 +54,17 @@ impl RateReporter {
         let current_timestamp = Instant::now();
 
         let time_span_sec = (current_timestamp - self.last_timestamp).as_secs_f64();
-        let messages_per_sec: f64 = (current_total_messages - self.last_total_messages) as f64 / time_span_sec;
-        let bytes_per_sec: f64 = (current_total_bytes - self.last_total_bytes) as f64 / time_span_sec;
+        let messages_per_sec: f64 =
+            (current_total_messages - self.last_total_messages) as f64 / time_span_sec;
+        let bytes_per_sec: f64 =
+            (current_total_bytes - self.last_total_bytes) as f64 / time_span_sec;
 
-        (self.on_report)(messages_per_sec, bytes_per_sec, current_total_messages, current_total_bytes);
+        (self.on_report)(
+            messages_per_sec,
+            bytes_per_sec,
+            current_total_messages,
+            current_total_bytes,
+        );
 
         self.last_total_bytes = current_total_bytes;
         self.last_total_messages = current_total_messages;
@@ -82,7 +89,8 @@ impl RateReporter {
         let current_total_bytes = self.total_bytes.load(Ordering::Relaxed);
         let current_total_messages = self.total_messages.load(Ordering::Relaxed);
 
-        self.total_bytes.store(current_total_bytes + bytes, Ordering::Relaxed);
+        self.total_bytes
+            .store(current_total_bytes + bytes, Ordering::Relaxed);
         self.total_messages
             .store(current_total_messages + messages, Ordering::Relaxed);
     }

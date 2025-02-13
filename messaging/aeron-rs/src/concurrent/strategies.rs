@@ -82,7 +82,8 @@ impl StrategyMut for BackOffIdleStrategy {
             BACK_OFF_STATE_PARKING => {}
             _ => {
                 std::thread::sleep(Duration::from_nanos(self.park_period_ns));
-                self.park_period_ns = std::cmp::min(self.park_period_ns * 2, self.max_park_period_ns);
+                self.park_period_ns =
+                    std::cmp::min(self.park_period_ns * 2, self.max_park_period_ns);
             }
         }
     }

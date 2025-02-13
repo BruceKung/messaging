@@ -1,15 +1,12 @@
-use std::{ffi::CString, sync::{Arc, Mutex}, f32::consts::E};
+use std::sync::{Arc, Mutex};
 
 use aeron_rs::{
     aeron::Aeron,
-    concurrent::{
-        atomic_buffer::{AlignedBuffer, AtomicBuffer},
-        status::status_indicator_reader::channel_status_to_str,
-    },
-    context::Context, publication, utils::errors::AeronError,
+    concurrent::atomic_buffer::{AlignedBuffer, AtomicBuffer},
+    publication,
 };
 
-use anyhow::{bail, Result };
+use anyhow::bail;
 
 use crate::base::utils::str_to_c;
 
@@ -18,72 +15,119 @@ pub struct Publisher {
 }
 
 impl Publisher {
-    pub fn new(aeron:  Arc<Mutex<Aeron>> , channel : &str, stream_id : i32 ) -> Self {
-        
-        println!("Adding publication to Aeron with channel {} and stream id {}", channel, stream_id);
-        let publication_id = aeron.lock().unwrap()
-            .add_publication(str_to_c(channel), stream_id)
-            .expect("Could not add publication");
-
-        let mut publication = aeron.lock().unwrap().find_publication(publication_id);
-        while publication.is_err() {
-            publication = aeron.lock().unwrap().find_publication(publication_id);
-        }
-        let publication: std::sync::Arc<std::sync::Mutex<publication::Publication>> = publication.unwrap();
-
+    pub fn new(aeron: Arc<Mutex<Aeron>>, channel: &str, stream_id: i32) -> Self {
+        println!(
+            "Adding publication to Aeron with channel {} and stream id {}",
+            channel, stream_id
+        );
+        //publication_id为 aeron给Aeron::Publisher分配的注册ID
+        let publication_id = match aeron.lock() {
+            Ok(mut aeron_locked) => {
+                match aeron_locked.add_publication(str_to_c(channel), stream_id) {
+                    Ok(id) => id,
+                    Err(e) => {
+                        panic!("Error adding publication: {:?}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                panic!("Error locking aeron: {:?}", e);
+            }
+        };
+        //需要从aeron中通过注册ID获取到Aeron::Publisher实例才算分配正常
+        let publication: Arc<Mutex<publication::Publication>> = loop {
+            match aeron.lock() {
+                Ok(mut aeron_locked) => match aeron_locked.find_publication(publication_id) {
+                    Ok(pub_found) => break pub_found, // 找到后退出循环
+                    Err(e) => {
+                        println!("Error finding publication: {:?}", e);
+                        // 如果找不到 publication，一直重试
+                    }
+                },
+                Err(e) => {
+                    panic!("Error locking aeron: {:?}", e);
+                }
+            }
+        };
+        // 由于 find_publication 返回值已经是 Arc<Mutex<Publication>> 类型，
+        let publication = publication;
         println!("Publication {} created", stream_id);
         Self {
-            publication : publication
+            publication: publication,
         }
     }
-
+    // 判断pub对端是否有订阅
     pub fn is_connected(&self) -> bool {
-        self.publication.lock().unwrap().is_connected()
+        match self.publication.lock() {
+            Ok(publication_locked) => {
+                return publication_locked.is_connected();
+            }
+            Err(e) => {
+                println!("[error]locking publication: {:?}", e);
+                return false;
+            }
+        }
     }
-
+    //消息推送 
     pub fn publish(&self, data: &[u8], len: i32) -> anyhow::Result<()> {
-
         let buffer = AlignedBuffer::with_capacity(len);
         let src_buffer = AtomicBuffer::from_aligned(&buffer);
 
         src_buffer.put_bytes(0, data);
 
         let mut count = 0;
+        //最多尝试100次
         loop {
-            match self.publication.lock().unwrap().offer_part(src_buffer, 0, len) {
-                Ok(_) => {
-                    //println!("Published to Aeron");
-                    break;
-                }
-                Err(e) => {
-                    std::thread::sleep(std::time::Duration::from_millis(1000));
-                    println!("Publish Error: {:?}", e);
-                    if count > 100 {
-                        bail!("After 100 times retry, puublish still error: {:?}", e);
+            match self.publication.lock() {
+                Ok(publication_locked) => match publication_locked.offer_part(src_buffer, 0, len) {
+                    Ok(_) => {
+                        break;
                     }
+                    Err(e) => {
+                        std::thread::sleep(std::time::Duration::from_millis(1000));
+                        println!("Publish Error: {:?}", e);
+                        if count > 100 {
+                            bail!("After 100 times retry, puublish still error: {:?}", e);
+                        }
+                    }
+                },
+                Err(e) => {
+                    println!("[error]locking publication: {:?}", e);
                 }
             }
             count += 1;
         }
-
-        if !self.publication.lock().unwrap().is_connected() {
-            println!("No active subscribers detected");
-            bail!("No active subscribers detected")
+        //每次调用都会检查对端是否存在sub订阅 如果不存在订阅则向上返回报错
+        match self.publication.lock() {
+            Ok(publication_locked) => {
+                if !publication_locked.is_connected() {
+                    println!("No active subscribers detected");
+                    bail!("No active subscribers detected")
+                }
+            }
+            Err(e) => {
+                println!("[error]locking publication: {:?}", e);
+            }
         }
         Ok(())
-
     }
-
+    //Aeron::Publisher资源释放
     pub fn release(&self) {
         println!("Stopping publisher");
-        self.publication.lock().unwrap().release();
+        match self.publication.lock() {
+            Ok(publication_locked) => {
+                publication_locked.release();
+            }
+            Err(e) => {
+                println!("[error]locking publication: {:?}", e);
+            }
+        }
     }
-
 }
 
+// 自定义资源释放动作
 impl Drop for Publisher {
     fn drop(&mut self) {
         self.release();
     }
 }
-

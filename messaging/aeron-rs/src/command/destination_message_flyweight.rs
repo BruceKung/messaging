@@ -54,14 +54,18 @@ impl DestinationMessageFlyweight {
 
     #[inline]
     pub fn set_channel(&mut self, value: &[u8]) {
-        self.correlated_message_flyweight
-            .flyweight
-            .string_put(offset_of!(DestinationMessageDefn, channel_length) as Index, value);
+        self.correlated_message_flyweight.flyweight.string_put(
+            offset_of!(DestinationMessageDefn, channel_length) as Index,
+            value,
+        );
     }
 
     #[inline]
     pub fn length(&self) -> Index {
-        unsafe { offset_of!(DestinationMessageDefn, channel_data) as Index + (*self.m_struct).channel_length as Index }
+        unsafe {
+            offset_of!(DestinationMessageDefn, channel_data) as Index
+                + (*self.m_struct).channel_length as Index
+        }
     }
 
     // Parent Setters

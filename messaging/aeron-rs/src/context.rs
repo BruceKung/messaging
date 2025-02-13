@@ -21,7 +21,10 @@ use std::sync::Arc;
 use crate::utils::errors::GenericError;
 use crate::{
     cnc_file_descriptor,
-    concurrent::{counters::CountersReader, logbuffer::term_reader::ErrorHandler, ring_buffer::ManyToOneRingBuffer},
+    concurrent::{
+        counters::CountersReader, logbuffer::term_reader::ErrorHandler,
+        ring_buffer::ManyToOneRingBuffer,
+    },
     driver_proxy::DriverProxy,
     image::Image,
     utils::{
@@ -289,7 +292,13 @@ fn default_error_handler(exception: AeronError) {
     panic!("AeronError: {:?}", exception);
 }
 
-fn default_on_new_publication_handler(_channel: CString, _stream_id: i32, _session_id: i32, _correlation_id: i64) {}
+fn default_on_new_publication_handler(
+    _channel: CString,
+    _stream_id: i32,
+    _session_id: i32,
+    _correlation_id: i64,
+) {
+}
 
 fn default_on_available_image_handler(_img: &Image) {}
 
@@ -297,9 +306,19 @@ fn default_on_new_subscription_handler(_channel: CString, _stream_id: i32, _corr
 
 fn default_on_unavailable_image_handler(_img: &Image) {}
 
-fn default_on_available_counter_handler(_counters_reader: &CountersReader, _registration_id: i64, _counter_id: i32) {}
+fn default_on_available_counter_handler(
+    _counters_reader: &CountersReader,
+    _registration_id: i64,
+    _counter_id: i32,
+) {
+}
 
-fn default_on_unavailable_counter_handler(_counters_reader: &CountersReader, _registration_id: i64, _counter_id: i32) {}
+fn default_on_unavailable_counter_handler(
+    _counters_reader: &CountersReader,
+    _registration_id: i64,
+    _counter_id: i32,
+) {
+}
 
 fn default_on_close_client_handler() {}
 
@@ -420,7 +439,10 @@ impl Context {
      * @param handler called when add is completed successfully
      * @return reference to this Context instance
      */
-    pub fn set_new_publication_handler(&mut self, handler: impl OnNewPublication + 'static) -> &Self {
+    pub fn set_new_publication_handler(
+        &mut self,
+        handler: impl OnNewPublication + 'static,
+    ) -> &Self {
         self.on_new_publication_handler = Box::new(handler);
         self
     }
@@ -437,7 +459,10 @@ impl Context {
      * @param handler called when add is completed successfully
      * @return reference to this Context instance
      */
-    pub fn set_new_exclusive_publication_handler(&mut self, handler: Box<dyn OnNewPublication>) -> &Self {
+    pub fn set_new_exclusive_publication_handler(
+        &mut self,
+        handler: Box<dyn OnNewPublication>,
+    ) -> &Self {
         self.on_new_exclusive_publication_handler = handler;
         self.is_on_new_exclusive_publication_handler_set = true;
         self
@@ -453,7 +478,10 @@ impl Context {
      * @param handler called when add is completed successfully
      * @return reference to this Context instance
      */
-    pub fn set_new_subscription_handler(&mut self, handler: impl OnNewSubscription + 'static) -> &Self {
+    pub fn set_new_subscription_handler(
+        &mut self,
+        handler: impl OnNewSubscription + 'static,
+    ) -> &Self {
         self.on_new_subscription_handler = Box::new(handler);
         self
     }
@@ -468,7 +496,10 @@ impl Context {
      * @param handler called when event occurs
      * @return reference to this Context instance
      */
-    pub fn set_available_image_handler(&mut self, handler: impl OnAvailableImage + 'static) -> &Self {
+    pub fn set_available_image_handler(
+        &mut self,
+        handler: impl OnAvailableImage + 'static,
+    ) -> &Self {
         self.on_available_image_handler = Box::new(handler);
         self
     }
@@ -483,7 +514,10 @@ impl Context {
      * @param handler called when event occurs
      * @return reference to this Context instance
      */
-    pub fn set_unavailable_image_handler(&mut self, handler: impl OnUnavailableImage + 'static) -> &Self {
+    pub fn set_unavailable_image_handler(
+        &mut self,
+        handler: impl OnUnavailableImage + 'static,
+    ) -> &Self {
         self.on_unavailable_image_handler = Box::new(handler);
         self
     }
@@ -498,7 +532,10 @@ impl Context {
      * @param handler called when event occurs
      * @return reference to this Context instance
      */
-    pub fn set_available_counter_handler(&mut self, handler: impl OnAvailableCounter + 'static) -> &Self {
+    pub fn set_available_counter_handler(
+        &mut self,
+        handler: impl OnAvailableCounter + 'static,
+    ) -> &Self {
         self.on_available_counter_handler = Box::new(handler);
         self
     }
@@ -513,7 +550,10 @@ impl Context {
      * @param handler called when event occurs
      * @return reference to this Context instance
      */
-    pub fn set_unavailable_counter_handler(&mut self, handler: impl OnUnavailableCounter + 'static) -> &Self {
+    pub fn set_unavailable_counter_handler(
+        &mut self,
+        handler: impl OnUnavailableCounter + 'static,
+    ) -> &Self {
         self.on_unavailable_counter_handler = Box::new(handler);
         self
     }
@@ -607,15 +647,25 @@ impl Context {
         self.pre_touch_mapped_memory
     }
 
-    pub fn request_driver_termination(directory: &str, token_buffer: *mut u8, token_length: Index) -> Result<(), AeronError> {
+    pub fn request_driver_termination(
+        directory: &str,
+        token_buffer: *mut u8,
+        token_length: Index,
+    ) -> Result<(), AeronError> {
         let cnc_filename = String::from(directory) + "/" + cnc_file_descriptor::CNC_FILE;
 
-        if MemoryMappedFile::get_file_size(cnc_filename.clone()).expect("Error getting CnC file size") > 0 {
-            let cnc_file = MemoryMappedFile::map_existing(cnc_filename, false).expect("Unable to map file");
+        if MemoryMappedFile::get_file_size(cnc_filename.clone())
+            .expect("Error getting CnC file size")
+            > 0
+        {
+            let cnc_file =
+                MemoryMappedFile::map_existing(cnc_filename, false).expect("Unable to map file");
 
             let cnc_version = cnc_file_descriptor::cnc_version_volatile(&cnc_file);
 
-            if semantic_version_major(cnc_version) != semantic_version_major(cnc_file_descriptor::CNC_VERSION) {
+            if semantic_version_major(cnc_version)
+                != semantic_version_major(cnc_file_descriptor::CNC_VERSION)
+            {
                 return Err(GenericError::CncVersionDoesntMatch {
                     app_version: semantic_version_to_string(cnc_file_descriptor::CNC_VERSION),
                     file_version: semantic_version_to_string(cnc_version),
@@ -624,7 +674,8 @@ impl Context {
             }
 
             let to_driver_buffer = cnc_file_descriptor::create_to_driver_buffer(&cnc_file);
-            let ring_buffer = ManyToOneRingBuffer::new(to_driver_buffer).expect("ManyToOneRingBuffer creation failed");
+            let ring_buffer = ManyToOneRingBuffer::new(to_driver_buffer)
+                .expect("ManyToOneRingBuffer creation failed");
             let driver_proxy = DriverProxy::new(Arc::new(ring_buffer));
 
             driver_proxy.terminate_driver(token_buffer, token_length)?;

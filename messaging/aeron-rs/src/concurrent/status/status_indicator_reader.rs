@@ -94,7 +94,10 @@ mod tests {
 
         assert_eq!(reader.id(), 239);
         assert_eq!(reader.offset, counters_reader);
-        assert_eq!(reader.volatile(), reader.buffer.get_volatile::<i64>(counters_reader));
+        assert_eq!(
+            reader.volatile(),
+            reader.buffer.get_volatile::<i64>(counters_reader)
+        );
     }
 
     #[test]
@@ -104,7 +107,10 @@ mod tests {
 
         let reader = StatusIndicatorReader::new(atomic_buffer, NO_ID_ALLOCATED);
         assert_eq!(reader.id(), NO_ID_ALLOCATED);
-        assert_eq!(reader.volatile(), reader.buffer.get_volatile::<i64>(reader.offset));
+        assert_eq!(
+            reader.volatile(),
+            reader.buffer.get_volatile::<i64>(reader.offset)
+        );
         assert_eq!(reader.buffer.as_slice(), &[1, 0, 0, 0, 0, 0, 0, 0]);
         assert_eq!(reader.buffer.as_slice(), static_buffer().as_slice());
     }
