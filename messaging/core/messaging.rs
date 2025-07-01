@@ -7,6 +7,7 @@ use aeron_rs::{
     aeron::Aeron,
     context::Context,
     utils::errors::AeronError,
+    log,
 };
 use anyhow::bail;
 use crossbeam::channel::Sender;
@@ -297,8 +298,8 @@ impl Messaging {
         (state.finish() % MAX_ID) as i32
     }
     //错误处理 aeron客户端层出现异常时执行
-    fn error_handler(error: AeronError) {
-        println!("Error: {:?}", error);
+    fn error_handler(err: AeronError) {
+        log!(error, "Error: {:?}", err);
     }
 }
 // 自定义实现资源释放
