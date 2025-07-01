@@ -87,7 +87,7 @@ impl Publisher {
                         std::thread::sleep(std::time::Duration::from_millis(1000));
                         println!("Publish Error: {:?}", e);
                         if count > 100 {
-                            bail!("After 100 times retry, puublish still error: {:?}", e);
+                            bail!("After 100 times retry, publish still error: {:?}", e);
                         }
                     }
                 },
