@@ -113,7 +113,9 @@ impl Messaging {
         //从dashmap找到对应的publish对象进行发送
         match self.publishers.entry(stream_id) {
             Entry::Occupied(mut o) => {
-                o.get_mut().publish(data, len);
+                if let Err(e) = o.get_mut().publish(data, len) {
+                    log!(error, "Failed to publish message to topic '{}': {:?}", topic, e);
+                }
             }
             Entry::Vacant(_) => {
                 bail!(
