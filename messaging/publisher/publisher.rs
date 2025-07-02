@@ -17,7 +17,7 @@ pub struct Publisher {
 
 impl Publisher {
     pub fn new(aeron: Arc<Mutex<Aeron>>, channel: &str, stream_id: i32) -> Self {
-        log!(trace,
+        log!(debug,
             "Adding publication to Aeron with channel {} and stream id {}",
             channel, stream_id
         );
@@ -52,7 +52,7 @@ impl Publisher {
         };
         // 由于 find_publication 返回值已经是 Arc<Mutex<Publication>> 类型，
         let publication = publication;
-        log!(trace, "Publication {} created", stream_id);
+        log!(debug, "Publication {} created", stream_id);
         Self {
             publication: publication,
         }
@@ -102,7 +102,7 @@ impl Publisher {
         match self.publication.lock() {
             Ok(publication_locked) => {
                 if !publication_locked.is_connected() {
-                    log!(trace, "No active subscribers detected");
+                    log!(debug, "No active subscribers detected");
                     bail!("No active subscribers detected")
                 }
             }
@@ -114,7 +114,7 @@ impl Publisher {
     }
     //Aeron::Publisher资源释放
     pub fn release(&self) {
-        log!(trace, "Stopping publisher");
+        log!(debug, "Stopping publisher");
         match self.publication.lock() {
             Ok(publication_locked) => {
                 publication_locked.release();

@@ -45,7 +45,7 @@ impl Subscriber {
     ) -> Self {
         let mut subscription: Arc<Mutex<Subscription>>;
         {
-            log!(trace,
+            log!(debug,
                 "Adding subscription to Aeron with channel {} and stream id {}",
                 channel, stream_id
             );
@@ -75,7 +75,7 @@ impl Subscriber {
                     sub = aeron.find_subscription(subscription_id);
                 }
             }
-            log!(trace,
+            log!(debug,
                 "Subscription channel {} stream {} is found",
                 channel, stream_id
             );
@@ -139,7 +139,7 @@ impl Subscriber {
                 }) {
                 // 线程启动成功，打印成功消息并将线程句柄保存在 poll_thread
                 Ok(thread) => {
-                    log!(trace, "Poll thread started");
+                    log!(debug, "Poll thread started");
                     poll_thread = Arc::new(Some(thread));
                 }
                  // 如果线程启动失败，打印错误信息
@@ -149,7 +149,7 @@ impl Subscriber {
             }
         }
     
-        log!(trace, "Subscriber {} created", stream_id);
+        log!(debug, "Subscriber {} created", stream_id);
         Self { stop, poll_thread }
     }
     //sub端不检查connect状态 默认true
@@ -157,12 +157,12 @@ impl Subscriber {
         true
     }
     pub fn subscribe(&self) -> anyhow::Result<()> {
-        log!(trace, "Subscribing to Aeron");
+        log!(debug, "Subscribing to Aeron");
         Ok(())
     }
     //退出订阅
     pub fn release(&self) -> anyhow::Result<()> {
-        log!(trace, "Unsubscribing from Aeron");
+        log!(debug, "Unsubscribing from Aeron");
         Ok(())
     }
 }

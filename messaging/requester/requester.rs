@@ -45,7 +45,7 @@ impl Requester {
         sender: Sender<Vec<u8>>,
         stop: Arc<AtomicBool>,
     ) -> Self {
-        log!(trace,
+        log!(debug,
             "Adding requester to Aeron with channel {} and stream id {},{}",
             channel, request_stream_id, response_stream_id
         );
