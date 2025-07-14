@@ -15,6 +15,7 @@ use aeron_rs::{
         errors::{AeronError, GenericError},
         types::Index,
     },
+    log,
 };
 use anyhow::Result;
 use crossbeam::channel::Sender;
@@ -44,7 +45,7 @@ impl Subscriber {
     ) -> Self {
         let mut subscription: Arc<Mutex<Subscription>>;
         {
-            println!(
+            log!(debug,
                 "Adding subscription to Aeron with channel {} and stream id {}",
                 channel, stream_id
             );
@@ -74,7 +75,7 @@ impl Subscriber {
                     sub = aeron.find_subscription(subscription_id);
                 }
             }
-            println!(
+            log!(debug,
                 "Subscription channel {} stream {} is found",
                 channel, stream_id
             );
@@ -113,7 +114,9 @@ impl Subscriber {
 
                             match sender.send(slice_msg.to_vec()) {
                                 Ok(_) => {} //println!("Message sent"),
-                                Err(e) => println!("Error sending message: {:?}", e),
+                                Err(e) => {
+                                    log!(error, "Error sending message: {:?}", e);
+                                }
                             }
                         }
                     };
@@ -129,24 +132,24 @@ impl Subscriber {
                                 poll_idle_strategy.idle_opt(fragments_read);
                             }
                             Err(e) => {
-                                println!("[error] lock subscription error");
+                                log!(error, "[error] lock subscription error");
                             }
                         }
                     }
                 }) {
                 // 线程启动成功，打印成功消息并将线程句柄保存在 poll_thread
                 Ok(thread) => {
-                    println!("Poll thread started");
+                    log!(debug, "Poll thread started");
                     poll_thread = Arc::new(Some(thread));
                 }
                  // 如果线程启动失败，打印错误信息
                 Err(e) => {
-                    println!("Error starting poll thread: {:?}", e);
+                    log!(error, "Error starting poll thread: {:?}", e);
                 }
             }
         }
     
-        println!("Subscriber {} created", stream_id);
+        log!(debug, "Subscriber {} created", stream_id);
         Self { stop, poll_thread }
     }
     //sub端不检查connect状态 默认true
@@ -154,12 +157,12 @@ impl Subscriber {
         true
     }
     pub fn subscribe(&self) -> anyhow::Result<()> {
-        println!("Subscribing to Aeron");
+        log!(debug, "Subscribing to Aeron");
         Ok(())
     }
     //退出订阅
     pub fn release(&self) -> anyhow::Result<()> {
-        println!("Unsubscribing from Aeron");
+        log!(debug, "Unsubscribing from Aeron");
         Ok(())
     }
 }

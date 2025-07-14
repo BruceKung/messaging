@@ -26,6 +26,7 @@ use aeron_rs::{
     image::Image,
     subscription,
     utils::{errors::AeronError, types::Index},
+    log,
 };
 use anyhow::{bail, Result};
 use crossbeam::channel::Sender;
@@ -44,7 +45,7 @@ impl Requester {
         sender: Sender<Vec<u8>>,
         stop: Arc<AtomicBool>,
     ) -> Self {
-        println!(
+        log!(debug,
             "Adding requester to Aeron with channel {} and stream id {},{}",
             channel, request_stream_id, response_stream_id
         );

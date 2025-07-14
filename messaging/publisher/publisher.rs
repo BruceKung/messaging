@@ -4,6 +4,7 @@ use aeron_rs::{
     aeron::Aeron,
     concurrent::atomic_buffer::{AlignedBuffer, AtomicBuffer},
     publication,
+    log,
 };
 
 use anyhow::bail;
@@ -16,7 +17,7 @@ pub struct Publisher {
 
 impl Publisher {
     pub fn new(aeron: Arc<Mutex<Aeron>>, channel: &str, stream_id: i32) -> Self {
-        println!(
+        log!(debug,
             "Adding publication to Aeron with channel {} and stream id {}",
             channel, stream_id
         );
@@ -40,7 +41,7 @@ impl Publisher {
                 Ok(mut aeron_locked) => match aeron_locked.find_publication(publication_id) {
                     Ok(pub_found) => break pub_found, // 找到后退出循环
                     Err(e) => {
-                        println!("Error finding publication: {:?}", e);
+                        log!(error, "Error finding publication: {:?}", e);
                         // 如果找不到 publication，一直重试
                     }
                 },
@@ -51,7 +52,7 @@ impl Publisher {
         };
         // 由于 find_publication 返回值已经是 Arc<Mutex<Publication>> 类型，
         let publication = publication;
-        println!("Publication {} created", stream_id);
+        log!(debug, "Publication {} created", stream_id);
         Self {
             publication: publication,
         }
@@ -63,7 +64,7 @@ impl Publisher {
                 return publication_locked.is_connected();
             }
             Err(e) => {
-                println!("[error]locking publication: {:?}", e);
+                log!(error, "[error]locking publication: {:?}", e);
                 return false;
             }
         }
@@ -85,14 +86,14 @@ impl Publisher {
                     }
                     Err(e) => {
                         std::thread::sleep(std::time::Duration::from_millis(1000));
-                        println!("Publish Error: {:?}", e);
+                        log!(error, "Publish Error: {:?}", e);
                         if count > 100 {
-                            bail!("After 100 times retry, puublish still error: {:?}", e);
+                            bail!("After 100 times retry, publish still error: {:?}", e);
                         }
                     }
                 },
                 Err(e) => {
-                    println!("[error]locking publication: {:?}", e);
+                    log!(error, "[error]locking publication: {:?}", e);
                 }
             }
             count += 1;
@@ -101,25 +102,25 @@ impl Publisher {
         match self.publication.lock() {
             Ok(publication_locked) => {
                 if !publication_locked.is_connected() {
-                    println!("No active subscribers detected");
+                    log!(debug, "No active subscribers detected");
                     bail!("No active subscribers detected")
                 }
             }
             Err(e) => {
-                println!("[error]locking publication: {:?}", e);
+                log!(error, "[error]locking publication: {:?}", e);
             }
         }
         Ok(())
     }
     //Aeron::Publisher资源释放
     pub fn release(&self) {
-        println!("Stopping publisher");
+        log!(debug, "Stopping publisher");
         match self.publication.lock() {
             Ok(publication_locked) => {
                 publication_locked.release();
             }
             Err(e) => {
-                println!("[error]locking publication: {:?}", e);
+                log!(error, "[error]locking publication: {:?}", e);
             }
         }
     }

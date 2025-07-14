@@ -7,6 +7,7 @@ use aeron_rs::{
     aeron::Aeron,
     context::Context,
     utils::errors::AeronError,
+    log,
 };
 use anyhow::bail;
 use crossbeam::channel::Sender;
@@ -112,7 +113,7 @@ impl Messaging {
         //从dashmap找到对应的publish对象进行发送
         match self.publishers.entry(stream_id) {
             Entry::Occupied(mut o) => {
-                o.get_mut().publish(data, len);
+                o.get_mut().publish(data, len)?
             }
             Entry::Vacant(_) => {
                 bail!(
@@ -297,8 +298,8 @@ impl Messaging {
         (state.finish() % MAX_ID) as i32
     }
     //错误处理 aeron客户端层出现异常时执行
-    fn error_handler(error: AeronError) {
-        println!("Error: {:?}", error);
+    fn error_handler(err: AeronError) {
+        log!(error, "Error: {:?}", err);
     }
 }
 // 自定义实现资源释放
