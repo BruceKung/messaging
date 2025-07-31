@@ -48,6 +48,7 @@ impl Publisher {
                             last_error_time = now;
                         }
                         // 如果找不到 publication，一直重试
+                        std::thread::sleep(std::time::Duration::from_millis(10));
                     }
                 },
                 Err(e) => {
