@@ -36,13 +36,19 @@ impl Publisher {
             }
         };
         //需要从aeron中通过注册ID获取到Aeron::Publisher实例才算分配正常
+        let mut last_error_time = std::time::Instant::now();
         let publication: Arc<Mutex<publication::Publication>> = loop {
             match aeron.lock() {
                 Ok(mut aeron_locked) => match aeron_locked.find_publication(publication_id) {
                     Ok(pub_found) => break pub_found, // 找到后退出循环
                     Err(e) => {
-                        log!(error, "Error finding publication: {:?}", e);
+                        let now = std::time::Instant::now();
+                        if now.duration_since(last_error_time).as_secs() >= 1 {
+                            log!(error, "Error finding publication: {:?}", e);
+                            last_error_time = now;
+                        }
                         // 如果找不到 publication，一直重试
+                        std::thread::sleep(std::time::Duration::from_millis(10));
                     }
                 },
                 Err(e) => {
