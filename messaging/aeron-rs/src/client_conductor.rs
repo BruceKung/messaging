@@ -447,6 +447,8 @@ impl ClientConductor {
         let mut result: i64 = 0;
 
         if now_ms > self.time_of_last_do_work_ms + self.inter_service_timeout_ms {
+            log!(info, "panic: Aeron inter-service timeout exceeded, timeout_ms: {}", self.inter_service_timeout_ms);
+            
             self.close_all_resources(now_ms);
 
             let err =
@@ -468,6 +470,8 @@ impl ClientConductor {
             };
 
             if now_ms > last_keepalive {
+                log!(info, "panic: Aeron driver inactive, driver_timeout_ms: {}", self.driver_timeout_ms);
+                
                 self.driver_active.store(false, Ordering::SeqCst);
 
                 let err = DriverInteractionError::WasInactive(self.driver_timeout_ms).into();
@@ -487,6 +491,8 @@ impl ClientConductor {
                 ) {
                     heartbeat_timestamp.set_ordered(now_ms as i64);
                 } else {
+                    log!(info, "panic: Aeron client heartbeat not active, client_id: {}", client_id);
+                    
                     self.close_all_resources(now_ms);
 
                     let err = GenericError::ClientHeartbeatNotActive.into();
@@ -532,6 +538,7 @@ impl ClientConductor {
 
     pub fn verify_driver_is_active_via_error_handler(&self) {
         if !self.driver_active.load(Ordering::SeqCst) {
+            log!(info, "panic: Aeron driver verification failed - driver is inactive");
             let err = DriverInteractionError::Inactive.into();
             self.error_handler.call(err);
         }
@@ -2183,8 +2190,8 @@ impl DriverListener for ClientConductor {
     fn on_client_timeout(&mut self, client_id: i64) {
         if self.driver_proxy.client_id() == client_id && !self.is_closed() {
             log!(
-                trace,
-                "on_client_timeout client_id {}. Closing all resources.",
+                info,
+                "panic: on_client_timeout, client_id {}. Closing all resources.",
                 client_id,
             );
 
