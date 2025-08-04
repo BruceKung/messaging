@@ -76,10 +76,17 @@ impl Messaging {
                 aeron.err().expect("[error] Nothing error here")
             );
         }
+        
+        let aeron_instance = match aeron {
+            Ok(instance) => instance,
+            Err(_) => unreachable!("Aeron should be Ok after is_err check"),
+        };
+        log!(info, "Aeron client connected with client_id: {}", aeron_instance.client_id());
+        
         //保存配置信息
         self.settings = Some(settings.clone());
         //上述有有aeron.is_err判断
-        self.aeron = Some(Arc::new(Mutex::new(aeron.unwrap())));
+        self.aeron = Some(Arc::new(Mutex::new(aeron_instance)));
 
         Ok(())
     }
