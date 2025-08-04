@@ -70,10 +70,13 @@ impl Messaging {
         //传入配置项Context,创建Aeron实例
         let aeron = Aeron::new(ctx);
         if aeron.is_err() {
+            let err = aeron.err().expect("[error] Nothing error here");
+            log!(info, "panic: Aeron connection failed, dir_prefix:{}, err:{}", 
+                settings.dir_prefix, err
+            );
             bail!(
                 "Could not connect to Aeron media driver dir_prefix:{}, err:{}",
-                settings.dir_prefix,
-                aeron.err().expect("[error] Nothing error here")
+                settings.dir_prefix, err
             );
         }
         
