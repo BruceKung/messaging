@@ -2136,14 +2136,14 @@ impl DriverListener for ClientConductor {
                     subscr_defn.on_available_image_handler.call(&image);
                     log!(trace, "[on_available_image] STEP 3.2 - on_available_image_handler completed");
 
-                    log!(trace, "[on_available_image] STEP 3.3 - about to add image to subscription");
+                    log!(trace, "[on_available_image] STEP 3.3 - about to add image to subscription, registration_id: {}, stream_id: {}", subscription_registration_id, subscr_defn.stream_id);
                     linger_images = Some(
                         subscription
                             .lock()
                             .expect("Mutex poisoned")
                             .add_image(image),
                     );
-                    log!(trace, "[on_available_image] STEP 3.3 - image added to subscription");
+                    log!(trace, "[on_available_image] STEP 3.3 - image added to subscription, registration_id: {}, stream_id: {}", subscription_registration_id, subscr_defn.stream_id);
                 }
             }
         }
