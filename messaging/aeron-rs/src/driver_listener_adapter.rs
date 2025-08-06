@@ -177,6 +177,7 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
                         image_ready.log_file_name(),
                         image_ready.source_identity(),
                     );
+                    log!(trace, "[receive_messages] branch: ResponseOnAvailableImage completed");
                 }
                 AeronCommand::ResponseOnOperationSuccess => {
                     log!(trace, "[receive_messages] branch: ResponseOnOperationSuccess");
@@ -238,6 +239,9 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
             }
         };
 
+        log!(trace, "[receive_messages] END - exiting receive_messages");
+
+        log!(trace, "[receive_messages] about to lock broadcast_receiver");
         self.broadcast_receiver
             .lock()
             .expect("Mutex poisoned")
