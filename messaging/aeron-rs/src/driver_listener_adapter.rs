@@ -119,6 +119,8 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
         &self,
         this_driver_listener: &mut ClientConductor,
     ) -> Result<usize, AeronError> {
+        log!(trace, "[receive_messages] START - entering receive_messages");
+        
         let receive_handler = |msg: AeronCommand,
                                buffer: AtomicBuffer,
                                offset: Index,
@@ -127,6 +129,7 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
 
             match msg {
                 AeronCommand::ResponseOnPublicationReady => {
+                    log!(trace, "[receive_messages] branch: ResponseOnPublicationReady");
                     let publication_ready = PublicationBuffersReadyFlyweight::new(buffer, offset);
 
                     this_driver_listener.on_new_publication(
@@ -140,6 +143,7 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
                     );
                 }
                 AeronCommand::ResponseOnExclusivePublicationReady => {
+                    log!(trace, "[receive_messages] branch: ResponseOnExclusivePublicationReady");
                     let publication_ready = PublicationBuffersReadyFlyweight::new(buffer, offset);
 
                     this_driver_listener.on_new_exclusive_publication(
@@ -153,6 +157,7 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
                     );
                 }
                 AeronCommand::ResponseOnSubscriptionReady => {
+                    log!(trace, "[receive_messages] branch: ResponseOnSubscriptionReady");
                     let subscription_ready = SubscriptionReadyFlyweight::new(buffer, offset);
 
                     this_driver_listener.on_subscription_ready(
@@ -161,6 +166,7 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
                     );
                 }
                 AeronCommand::ResponseOnAvailableImage => {
+                    log!(trace, "[receive_messages] branch: ResponseOnAvailableImage");
                     let image_ready = ImageBuffersReadyFlyweight::new(buffer, offset);
 
                     this_driver_listener.on_available_image(
@@ -173,11 +179,13 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
                     );
                 }
                 AeronCommand::ResponseOnOperationSuccess => {
+                    log!(trace, "[receive_messages] branch: ResponseOnOperationSuccess");
                     let operation_succeeded = OperationSucceededFlyweight::new(buffer, offset);
 
                     this_driver_listener.on_operation_success(operation_succeeded.correlation_id());
                 }
                 AeronCommand::ResponseOnUnavailableImage => {
+                    log!(trace, "[receive_messages] branch: ResponseOnUnavailableImage");
                     let image_message = ImageMessageFlyweight::new(buffer, offset);
 
                     this_driver_listener.on_unavailable_image(
@@ -186,16 +194,19 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
                     );
                 }
                 AeronCommand::ResponseOnError => {
+                    log!(trace, "[receive_messages] branch: ResponseOnError");
                     let error_response = ErrorResponseFlyweight::new(buffer, offset);
 
                     let error_code = error_response.error_code();
 
                     if ERROR_CODE_CHANNEL_ENDPOINT_ERROR == error_code {
+                        log!(trace, "[receive_messages] branch: ResponseOnError/ERROR_CODE_CHANNEL_ENDPOINT_ERROR");
                         this_driver_listener.on_channel_endpoint_error_response(
                             error_response.offending_command_correlation_id(),
                             error_response.error_message(),
                         );
                     } else {
+                        log!(trace, "[receive_messages] branch: ResponseOnError/other error code");
                         this_driver_listener.on_error_response(
                             error_response.offending_command_correlation_id(),
                             error_code,
@@ -204,20 +215,24 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
                     }
                 }
                 AeronCommand::ResponseOnCounterReady => {
+                    log!(trace, "[receive_messages] branch: ResponseOnCounterReady");
                     let response = CounterUpdateFlyweight::new(buffer, offset);
                     this_driver_listener
                         .on_available_counter(response.correlation_id(), response.counter_id());
                 }
                 AeronCommand::ResponseOnUnavailableCounter => {
+                    log!(trace, "[receive_messages] branch: ResponseOnUnavailableCounter");
                     let response = CounterUpdateFlyweight::new(buffer, offset);
                     this_driver_listener
                         .on_unavailable_counter(response.correlation_id(), response.counter_id());
                 }
                 AeronCommand::ResponseOnClientTimeout => {
+                    log!(trace, "[receive_messages] branch: ResponseOnClientTimeout");
                     let response = ClientTimeoutFlyweight::new(buffer, offset);
                     this_driver_listener.on_client_timeout(response.client_id());
                 }
                 _ => {
+                    log!(trace, "[receive_messages] branch: unexpected AeronCommand: {}", msg as i32);
                     unreachable!("Unexpected control protocol event: {}", msg as i32);
                 }
             }

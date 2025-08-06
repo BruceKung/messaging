@@ -24,6 +24,7 @@ use std::{
 
 use crate::concurrent::{logbuffer::term_reader::ErrorHandler, strategies::Strategy};
 use crate::utils::errors::{AeronError, GenericError};
+use crate::log;
 
 /// The trait to be implemented by agents run within AgentRunner
 pub trait Agent {
@@ -122,32 +123,52 @@ impl<
      * Run the Agent duty cycle until closed
      */
     pub fn run(&mut self, stop_rx: Receiver<bool>) {
+        log!(trace, "[agent_runner::run] START - entering run method");
+        log!(trace, "[agent_runner::run] STEP 1 - about to call agent.on_start");
         if let Err(error) = self.agent.lock().expect("Mutex poisoned").on_start() {
             self.exception_handler.call(error);
         }
+        log!(trace, "[agent_runner::run] STEP 1 - agent.on_start completed");
 
+        log!(trace, "[agent_runner::run] STEP 2 - entering main loop");
         loop {
             // Monitor message from main thread and be ready to finish the work
+            log!(trace, "[agent_runner::run] LOOP - checking stop signal");
             if let Ok(time_to_stop) = stop_rx.try_recv() {
                 if time_to_stop {
+                    log!(trace, "[agent_runner::run] LOOP - received stop signal, breaking loop");
                     break;
                 }
             }
 
             let mut result: Result<i32, AeronError> = Ok(0);
+            log!(trace, "[agent_runner::run] LOOP - about to lock agent and call do_work");
             {
                 let mut agent = self.agent.lock().expect("Mutex poisoned");
                 result = agent.do_work();
             }
+            log!(trace, "[agent_runner::run] LOOP - agent.do_work completed");
 
             match result {
-                Ok(work_cnt) => self.idle_strategy.idle_opt(work_cnt),
-                Err(error) => self.exception_handler.call(error),
+                Ok(work_cnt) => {
+                    log!(trace, "[agent_runner::run] LOOP - about to call idle_strategy.idle_opt, work_cnt: {}", work_cnt);
+                    self.idle_strategy.idle_opt(work_cnt);
+                    log!(trace, "[agent_runner::run] LOOP - idle_strategy.idle_opt completed");
+                },
+                Err(error) => {
+                    log!(trace, "[agent_runner::run] LOOP - about to call exception_handler.call for error");
+                    self.exception_handler.call(error);
+                    log!(trace, "[agent_runner::run] LOOP - exception_handler.call completed");
+                },
             }
         }
+        log!(trace, "[agent_runner::run] STEP 2 - main loop exited");
 
+        log!(trace, "[agent_runner::run] STEP 3 - about to call agent.on_close");
         if let Err(error) = self.agent.lock().expect("Mutex poisoned").on_close() {
             self.exception_handler.call(error);
         }
+        log!(trace, "[agent_runner::run] STEP 3 - agent.on_close completed");
+        log!(trace, "[agent_runner::run] END - run method completed");
     }
 }
