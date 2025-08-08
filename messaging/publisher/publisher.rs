@@ -44,17 +44,17 @@ impl Publisher {
                     Err(e) => {
                         let now = std::time::Instant::now();
                         if now.duration_since(last_error_time).as_secs() >= 1 {
-                            log!(error, "Error finding publication: {:?}", e);
+                            log!(warn, "Waiting for publication: {:?}", e);
                             last_error_time = now;
                         }
-                        // 如果找不到 publication，一直重试
-                        std::thread::sleep(std::time::Duration::from_millis(10));
                     }
                 },
                 Err(e) => {
                     panic!("Error locking aeron: {:?}", e);
                 }
             }
+            // 如果找不到 publication，在锁外休眠后重试
+            std::thread::sleep(std::time::Duration::from_millis(10));
         };
         // 由于 find_publication 返回值已经是 Arc<Mutex<Publication>> 类型，
         let publication = publication;
