@@ -585,7 +585,6 @@ impl ClientConductor {
 
             Ok(lb.log_buffers.clone())
         } else {
-            log!(trace, "[get_log_buffers] log_buffers not found start to create new log_buffers");
             let touch =
                 self.pre_touch_mapped_memory && !channel.to_string_lossy().contains("sparse=true");
             let log_buffer = LogBuffers::from_existing(
@@ -593,13 +592,9 @@ impl ClientConductor {
                 touch,
             )?;
 
-            log!(trace, "[get_log_buffers] new log_buffers created");
-
             let log_buffers = Arc::new(log_buffer);
             self.log_buffers_by_registration_id
                 .insert(registration_id, LogBuffersDefn::new(log_buffers.clone()));
-
-            log!(trace, "[get_log_buffers] log_buffers inserted into log_buffers_by_registration_id");
 
             Ok(log_buffers)
         }
@@ -1660,26 +1655,16 @@ impl Agent for ClientConductor {
     }
 
     fn do_work(&mut self) -> Result<i32, AeronError> {
-        log!(trace, "[do_work] START - entering do_work method");
         let mut work_count = 0;
 
-        log!(trace, "[do_work] STEP 1 - about to take driver_listener_adapter");
         let dla = self.driver_listener_adapter.take().unwrap();
-        log!(trace, "[do_work] STEP 1 - driver_listener_adapter taken successfully");
 
-        log!(trace, "[do_work] STEP 2 - about to call receive_messages");
         work_count += dla.receive_messages(self)?;
-        log!(trace, "[do_work] STEP 2 - receive_messages completed, work_count: {}", work_count);
 
-        log!(trace, "[do_work] STEP 3 - about to replace driver_listener_adapter");
         self.driver_listener_adapter.replace(dla);
-        log!(trace, "[do_work] STEP 3 - driver_listener_adapter replaced successfully");
 
-        log!(trace, "[do_work] STEP 4 - about to call on_heartbeat_check_timeouts");
         work_count += self.on_heartbeat_check_timeouts() as usize;
-        log!(trace, "[do_work] STEP 4 - on_heartbeat_check_timeouts completed, work_count: {}", work_count);
 
-        log!(trace, "[do_work] END - do_work method completed successfully, total work_count: {}", work_count);
         Ok(work_count as i32)
     }
 
@@ -2065,9 +2050,6 @@ impl DriverListener for ClientConductor {
         let mut log_buffers: Option<Arc<LogBuffers>> = None;
         let mut maybe_channel: Option<CString> = None;
 
-        log!(trace, "[on_available_image] START - entering on_available_image");
-
-        log!(trace, "[on_available_image] STEP 1 - about to get subscription");
         // This piece of code is separated from the below (with same condition) to make borrow checker happy.
         if let Some(subscr_defn) = self
             .subscription_by_registration_id
@@ -2089,9 +2071,7 @@ impl DriverListener for ClientConductor {
                 }
             }
         }
-        log!(trace, "[on_available_image] STEP 1 - subscription lookup completed");
 
-        log!(trace, "[on_available_image] STEP 2 - about to get log_buffers");
         if let Some(channel) = maybe_channel {
             log_buffers = Some(
                 self.get_log_buffers(correlation_id, log_filename.clone(), channel)
@@ -2104,9 +2084,7 @@ impl DriverListener for ClientConductor {
                     }),
             );
         }
-        log!(trace, "[on_available_image] STEP 2 - get log_buffers completed");
 
-        log!(trace, "[on_available_image] STEP 3 - about to get subscription");
         let mut linger_images: Option<Vec<Image>> = None;
 
         if let Some(subscr_defn) = self
@@ -2119,7 +2097,6 @@ impl DriverListener for ClientConductor {
                         self.counter_values_buffer,
                         subscriber_position_id,
                     );
-                    log!(trace, "[on_available_image] STEP 3.1 - about to create image");
                     let image = Image::create(
                         session_id,
                         correlation_id,
@@ -2129,31 +2106,23 @@ impl DriverListener for ClientConductor {
                         log_buffers.unwrap(),
                         self.error_handler.clone_box(),
                     );
-                    log!(trace, "[on_available_image] STEP 3.1 - image created");
 
-                    log!(trace, "[on_available_image] STEP 3.2 - about to call on_available_image_handler");
                     let _callback_guard = CallbackGuard::new(&mut self.is_in_callback);
                     subscr_defn.on_available_image_handler.call(&image);
-                    log!(trace, "[on_available_image] STEP 3.2 - on_available_image_handler completed");
 
-                    log!(trace, "[on_available_image] STEP 3.3 - about to add image to subscription, registration_id: {}, stream_id: {}", subscription_registration_id, subscr_defn.stream_id);
                     linger_images = Some(
                         subscription
                             .lock()
                             .expect("Mutex poisoned")
                             .add_image(image),
                     );
-                    log!(trace, "[on_available_image] STEP 3.3 - image added to subscription, registration_id: {}, stream_id: {}", subscription_registration_id, subscr_defn.stream_id);
                 }
             }
         }
-        log!(trace, "[on_available_image] STEP 3 - subscription lookup completed");
 
-        log!(trace, "[on_available_image] STEP 4 - about to linger resources");
         if let Some(images) = linger_images {
             self.linger_resource((self.epoch_clock)(), images);
         }
-        log!(trace, "[on_available_image] STEP 4 - linger resources completed");
     }
 
     fn on_unavailable_image(&mut self, correlation_id: i64, subscription_registration_id: i64) {

@@ -124,7 +124,6 @@ impl Subscriber {
                     let mut fragment_assembler = FragmentAssembler::new(&mut handler, None);
                     let mut fragment_handler = fragment_assembler.handler();
                     //while循环调用sub实例的 `poll` 方法，处理收到的消息片段
-                    log!(trace, "[subscriber] poll thread started, stream_id: {}", stream_id);
                     while !stop.load(Ordering::SeqCst) {
                         let fragments_read = {
                             match subscription.lock() {
