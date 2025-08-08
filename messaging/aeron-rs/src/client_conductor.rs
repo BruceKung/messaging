@@ -1658,13 +1658,9 @@ impl Agent for ClientConductor {
         let mut work_count = 0;
 
         let dla = self.driver_listener_adapter.take().unwrap();
-
         work_count += dla.receive_messages(self)?;
-
         self.driver_listener_adapter.replace(dla);
-
         work_count += self.on_heartbeat_check_timeouts() as usize;
-
         Ok(work_count as i32)
     }
 

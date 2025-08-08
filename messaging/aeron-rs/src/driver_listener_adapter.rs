@@ -119,7 +119,6 @@ impl<T: DriverListener> DriverListenerAdapter<T> {
         &self,
         this_driver_listener: &mut ClientConductor,
     ) -> Result<usize, AeronError> {
-        
         let receive_handler = |msg: AeronCommand,
                                buffer: AtomicBuffer,
                                offset: Index,
