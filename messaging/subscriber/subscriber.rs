@@ -125,16 +125,18 @@ impl Subscriber {
                     let mut fragment_handler = fragment_assembler.handler();
                     //while循环调用sub实例的 `poll` 方法，处理收到的消息片段
                     while !stop.load(Ordering::SeqCst) {
-                        match subscription.lock() {
-                            Ok(mut subscription_locked) => {
-                                let fragments_read = subscription_locked
-                                    .poll(&mut fragment_handler, DEFAULT_FRAGMENT_COUNT_LIMIT);
-                                poll_idle_strategy.idle_opt(fragments_read);
+                        let fragments_read = {
+                            match subscription.lock() {
+                                Ok(mut subscription_locked) => {
+                                    subscription_locked.poll(&mut fragment_handler, DEFAULT_FRAGMENT_COUNT_LIMIT)
+                                }
+                                Err(e) => {
+                                    log!(error, "[error] lock subscription error");
+                                    0
+                                }
                             }
-                            Err(e) => {
-                                log!(error, "[error] lock subscription error");
-                            }
-                        }
+                        };
+                        poll_idle_strategy.idle_opt(fragments_read);
                     }
                 }) {
                 // 线程启动成功，打印成功消息并将线程句柄保存在 poll_thread

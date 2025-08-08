@@ -300,6 +300,11 @@ pub struct ClientConductor {
     time_of_last_keepalive_ms: Moment,
     time_of_last_check_managed_resources_ms: Moment,
 
+    // 日志频率限制相关字段
+    time_of_last_inter_service_timeout_log_ms: Moment,
+    time_of_last_driver_inactive_log_ms: Moment,
+    time_of_last_heartbeat_not_active_log_ms: Moment,
+
     arced_self: Option<Arc<Mutex<ClientConductor>>>,
 
     padding: [u8; crate::utils::misc::CACHE_LINE_LENGTH as usize],
@@ -360,6 +365,9 @@ impl ClientConductor {
             time_of_last_do_work_ms: epoch_clock(),
             time_of_last_keepalive_ms: epoch_clock(),
             time_of_last_check_managed_resources_ms: epoch_clock(),
+            time_of_last_inter_service_timeout_log_ms: epoch_clock(),
+            time_of_last_driver_inactive_log_ms: epoch_clock(),
+            time_of_last_heartbeat_not_active_log_ms: epoch_clock(),
             arced_self: None,
             padding: [0; crate::utils::misc::CACHE_LINE_LENGTH as usize],
         };
@@ -448,7 +456,6 @@ impl ClientConductor {
 
         if now_ms > self.time_of_last_do_work_ms + self.inter_service_timeout_ms {
             let client_id = self.driver_proxy.client_id();
-            log!(info, "panic: Aeron inter-service timeout exceeded, timeout_ms: {}, client_id: {}", self.inter_service_timeout_ms, client_id);
             
             self.close_all_resources(now_ms);
 
@@ -456,7 +463,11 @@ impl ClientConductor {
                 GenericError::TimeoutBetweenServiceCallsOverTimeout(self.inter_service_timeout_ms)
                     .into();
 
-            log!(trace, "on_heartbeat_check_timeouts: {:?}", &err);
+            // 限制日志频率：1秒最多一条
+            if now_ms >= self.time_of_last_inter_service_timeout_log_ms + 1000 {
+                log!(trace, "panic: on_heartbeat_check_timeouts: Aeron inter-service timeout exceeded, timeout_ms: {}, client_id: {}, error: {:?}", self.inter_service_timeout_ms, client_id, &err);
+                self.time_of_last_inter_service_timeout_log_ms = now_ms;
+            }
 
             self.error_handler.call(err);
         }
@@ -472,13 +483,16 @@ impl ClientConductor {
 
             if now_ms > last_keepalive {
                 let client_id = self.driver_proxy.client_id();
-                log!(info, "panic: Aeron driver inactive, driver_timeout_ms: {}, client_id: {}", self.driver_timeout_ms, client_id);
                 
                 self.driver_active.store(false, Ordering::SeqCst);
 
                 let err = DriverInteractionError::WasInactive(self.driver_timeout_ms).into();
 
-                log!(trace, "on_heartbeat_check_timeouts: {:?}", &err);
+                // 限制日志频率：1秒最多一条
+                if now_ms >= self.time_of_last_driver_inactive_log_ms + 1000 {
+                    log!(trace, "panic: on_heartbeat_check_timeouts: Aeron driver inactive, driver_timeout_ms: {}, client_id: {}, error: {:?}", self.driver_timeout_ms, client_id, &err);
+                    self.time_of_last_driver_inactive_log_ms = now_ms;
+                }
 
                 self.error_handler.call(err);
             }
@@ -493,13 +507,15 @@ impl ClientConductor {
                 ) {
                     heartbeat_timestamp.set_ordered(now_ms as i64);
                 } else {
-                    log!(info, "panic: Aeron client heartbeat not active, client_id: {}", client_id);
-                    
                     self.close_all_resources(now_ms);
 
                     let err = GenericError::ClientHeartbeatNotActive.into();
 
-                    log!(trace, "on_heartbeat_check_timeouts: {:?}", &err);
+                    // 限制日志频率：1秒最多一条
+                    if now_ms >= self.time_of_last_heartbeat_not_active_log_ms + 1000 {
+                        log!(trace, "panic: on_heartbeat_check_timeouts: Aeron client heartbeat not active, client_id: {}, error: {:?}", client_id, &err);
+                        self.time_of_last_heartbeat_not_active_log_ms = now_ms;
+                    }
 
                     self.error_handler.call(err);
                 }
