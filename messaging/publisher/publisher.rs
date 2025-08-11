@@ -85,24 +85,32 @@ impl Publisher {
         let mut count = 0;
         //最多尝试100次
         loop {
+            let mut should_sleep = false;
             match self.publication.lock() {
                 Ok(publication_locked) => match publication_locked.offer_part(src_buffer, 0, len) {
                     Ok(_) => {
                         break;
                     }
                     Err(e) => {
-                        std::thread::sleep(std::time::Duration::from_millis(1000));
                         log!(error, "Publish Error: {:?}", e);
                         if count > 100 {
                             bail!("After 100 times retry, publish still error: {:?}", e);
                         }
+                        // 标记需要休眠，在锁外执行
+                        should_sleep = true;
                     }
                 },
                 Err(e) => {
                     log!(error, "[error]locking publication: {:?}", e);
+                    // 锁获取失败时不休眠，立即重试
                 }
             }
             count += 1;
+            
+            // 在锁外执行休眠
+            if should_sleep {
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+            }
         }
         //每次调用都会检查对端是否存在sub订阅 如果不存在订阅则向上返回报错
         match self.publication.lock() {
