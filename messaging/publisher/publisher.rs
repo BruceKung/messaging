@@ -85,30 +85,32 @@ impl Publisher {
         let mut count = 0;
         //最多尝试100次
         loop {
-            let mut should_sleep = false;
+            let mut offer_part_fail = false;
+            let mut error_info = None;
             match self.publication.lock() {
                 Ok(publication_locked) => match publication_locked.offer_part(src_buffer, 0, len) {
                     Ok(_) => {
                         break;
                     }
                     Err(e) => {
-                        log!(error, "Publish Error: {:?}", e);
-                        if count > 100 {
-                            bail!("After 100 times retry, publish still error: {:?}", e);
-                        }
-                        // 标记需要休眠，在锁外执行
-                        should_sleep = true;
+                        offer_part_fail = true;
+                        error_info = Some(format!("Publish Error: {:?}", e));
                     }
                 },
                 Err(e) => {
                     log!(error, "[error]locking publication: {:?}", e);
-                    // 锁获取失败时不休眠，立即重试
                 }
             }
             count += 1;
             
-            // 在锁外执行休眠
-            if should_sleep {
+            // 在锁外执行日志记录和休眠
+            if offer_part_fail {
+                if let Some(error_msg) = error_info {
+                    log!(error, "{}", error_msg);
+                    if count > 100 {
+                        bail!("After 100 times retry, publish still error: {}", error_msg);
+                    }
+                }
                 std::thread::sleep(std::time::Duration::from_millis(1000));
             }
         }
