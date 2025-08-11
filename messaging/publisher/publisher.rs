@@ -108,7 +108,7 @@ impl Publisher {
                 if let Some(error_msg) = error_info {
                     log!(error, "{}", error_msg);
                     if count > 100 {
-                        bail!("After 100 times retry, publish still error: {}", error_msg);
+                        bail!("Publish failed after 100 attempts: {}", error_msg);
                     }
                 }
                 std::thread::sleep(std::time::Duration::from_millis(1000));
