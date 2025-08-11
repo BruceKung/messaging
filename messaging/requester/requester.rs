@@ -56,6 +56,7 @@ impl Requester {
             response_stream_id,
             sender,
             stop.clone(),
+            None, // 对于 requester，不需要忽略 session_id
         ));
 
         Self {

@@ -37,6 +37,7 @@ pub struct Messaging {
     pub subscribers: DashMap<i32, Arc<Subscriber>>, //subscription实例集合
     pub requesters: DashMap<String, Arc<Requester>>,    //上层封装Requester实例集合 基于publish和subscriber进一步封装 目前未使用 考虑去掉
     pub responsers: DashMap<String, Arc<Responser>>,    //上层封装Responser实例集合 基于publish和subscriber进一步封装 目前未使用 考虑去掉
+    publisher_session_ids: DashMap<i32, i32>, // stream_id -> session_id
 }
 
 impl Messaging {
@@ -48,6 +49,7 @@ impl Messaging {
             subscribers: DashMap::new(),
             requesters: DashMap::new(),
             responsers: DashMap::new(),
+            publisher_session_ids: DashMap::new(),
         }
     }
     /*
@@ -111,6 +113,11 @@ impl Messaging {
                 .as_str(),
             stream_id,
         ));
+        
+        // 记录 session_id
+        let session_id = p.get_session_id();
+        self.publisher_session_ids.insert(stream_id, session_id);
+        
         self.publishers.insert(stream_id, p.clone());
         Ok(p.clone())
     }
@@ -178,6 +185,7 @@ impl Messaging {
             stream_id,
             sender,
             stop,
+            self.publisher_session_ids.get(&stream_id).map(|entry| *entry.value()),
         ));
         s.subscribe();
         self.subscribers.insert(stream_id, s);
@@ -299,6 +307,7 @@ impl Messaging {
         self.subscribers.clear();
         self.requesters.clear();
         self.responsers.clear();
+        self.publisher_session_ids.clear();
     }
     //传入topic计算hash值
     fn hash_stream_id(topic: &str) -> i32 {
