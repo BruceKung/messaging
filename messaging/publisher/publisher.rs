@@ -106,8 +106,8 @@ impl Publisher {
             // 在锁外执行日志记录和休眠
             if offer_part_fail {
                 if let Some(error_msg) = error_info {
-                    log!(error, "{}", error_msg);
                     if count > 100 {
+                        log!(error, "{}", error_msg);
                         bail!("Publish failed after 100 attempts: {}", error_msg);
                     }
                 }
