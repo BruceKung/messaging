@@ -37,7 +37,19 @@ pub struct Subscriber {
 }
 //Subscriber实例创建后即支持接受pub对端的数据传输，异常情况都直接panic
 impl Subscriber {
+    // 向后兼容的 new 方法，不进行 session_id 过滤
     pub fn new(
+        aeron: Arc<Mutex<Aeron>>,
+        channel: &str,
+        stream_id: i32,
+        sender: Sender<Vec<u8>>,
+        stop: Arc<AtomicBool>,
+    ) -> Self {
+        Self::new_with_ignore_session_id(aeron, channel, stream_id, sender, stop, None)
+    }
+
+    // 新的方法，支持 session_id 过滤
+    pub fn new_with_ignore_session_id(
         aeron: Arc<Mutex<Aeron>>,
         channel: &str,
         stream_id: i32,

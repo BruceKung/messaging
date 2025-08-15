@@ -175,7 +175,7 @@ impl Messaging {
 
         let stream_id = Self::hash_stream_id(topic);
 
-        let s = Arc::new(Subscriber::new(
+        let s = Arc::new(Subscriber::new_with_ignore_session_id(
             self.aeron.as_ref().expect("[error] aeron is None").clone(),
             self.settings
                 .as_ref()
