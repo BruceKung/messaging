@@ -33,15 +33,29 @@ static DEFAULT_FRAGMENT_COUNT_LIMIT: i32 = 10;
 pub struct Subscriber {
     pub stop: Arc<AtomicBool>, //状态标志位
     pub poll_thread: Arc<Option<thread::JoinHandle<()>>>, //poll消息线程
+    ignore_session_id: Option<i32>, // 需要忽略的 session_id
 }
 //Subscriber实例创建后即支持接受pub对端的数据传输，异常情况都直接panic
 impl Subscriber {
+    // 向后兼容的 new 方法，不进行 session_id 过滤
     pub fn new(
         aeron: Arc<Mutex<Aeron>>,
         channel: &str,
         stream_id: i32,
         sender: Sender<Vec<u8>>,
         stop: Arc<AtomicBool>,
+    ) -> Self {
+        Self::new_with_ignore_session_id(aeron, channel, stream_id, sender, stop, None)
+    }
+
+    // 新的方法，支持 session_id 过滤
+    pub fn new_with_ignore_session_id(
+        aeron: Arc<Mutex<Aeron>>,
+        channel: &str,
+        stream_id: i32,
+        sender: Sender<Vec<u8>>,
+        stop: Arc<AtomicBool>,
+        ignore_session_id: Option<i32>,
     ) -> Self {
         let mut subscription: Arc<Mutex<Subscription>>;
         {
@@ -102,10 +116,19 @@ impl Subscriber {
                 .name(String::from("Poll thread"))
                 .spawn(move || {
                     //定义aeron::FragmentAssembler消息处理方法
+                    let ignore_session_id = ignore_session_id.clone();
                     let mut handler = move |buffer: &AtomicBuffer,
                                             offset: Index,
                                             length: Index,
                                             header: &Header| {
+                        // 检查 session_id，如果是自己发送的消息则忽略
+                        if let Some(ignore_id) = ignore_session_id {
+                            if header.session_id() == ignore_id {
+                                log!(debug, "Ignore session id: {}, because it is published by itself", ignore_id);
+                                return;
+                            }
+                        }
+                        
                         unsafe {
                             let slice_msg = slice::from_raw_parts_mut(
                                 buffer.buffer().offset(offset as isize),
@@ -152,7 +175,11 @@ impl Subscriber {
         }
     
         log!(debug, "Subscriber {} created", stream_id);
-        Self { stop, poll_thread }
+        Self { 
+            stop, 
+            poll_thread,
+            ignore_session_id,
+        }
     }
     //sub端不检查connect状态 默认true
     pub fn is_connected(&self) -> bool {

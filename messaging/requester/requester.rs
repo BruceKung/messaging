@@ -50,12 +50,13 @@ impl Requester {
             channel, request_stream_id, response_stream_id
         );
         let publisher = Arc::new(Publisher::new(aeron.clone(), channel, request_stream_id));
-        let subscriber = Arc::new(Subscriber::new(
+        let subscriber = Arc::new(Subscriber::new_with_ignore_session_id(
             aeron.clone(),
             channel,
             response_stream_id,
             sender,
             stop.clone(),
+            None, // 对于 requester，不需要忽略 session_id
         ));
 
         Self {

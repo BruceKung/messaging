@@ -13,6 +13,7 @@ use crate::base::utils::str_to_c;
 
 pub struct Publisher {
     publication: Arc<Mutex<publication::Publication>>,
+    session_id: i32,
 }
 
 impl Publisher {
@@ -59,8 +60,16 @@ impl Publisher {
         // 由于 find_publication 返回值已经是 Arc<Mutex<Publication>> 类型，
         let publication = publication;
         log!(debug, "Publication {} created", stream_id);
+        let session_id = {
+            match publication.lock() {
+                Ok(pub_locked) => pub_locked.session_id(),
+                Err(_) => 0,
+            }
+        };
+        
         Self {
             publication: publication,
+            session_id: session_id,
         }
     }
     // 判断pub对端是否有订阅
@@ -128,6 +137,11 @@ impl Publisher {
         }
         Ok(())
     }
+    // 获取 session_id
+    pub fn get_session_id(&self) -> i32 {
+        self.session_id
+    }
+    
     //Aeron::Publisher资源释放
     pub fn release(&self) {
         log!(debug, "Stopping publisher");
