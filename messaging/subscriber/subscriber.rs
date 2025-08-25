@@ -138,7 +138,7 @@ impl Subscriber {
                             match sender.send(slice_msg.to_vec()) {
                                 Ok(_) => {} //println!("Message sent"),
                                 Err(e) => {
-                                    log!(error, "Error sending message: {:?}", e);
+                                    log!(error, "panic: Error sending message: {:?}", e);
                                 }
                             }
                         }
@@ -154,7 +154,7 @@ impl Subscriber {
                                     subscription_locked.poll(&mut fragment_handler, DEFAULT_FRAGMENT_COUNT_LIMIT)
                                 }
                                 Err(e) => {
-                                    log!(error, "[error] lock subscription error");
+                                    log!(error, "panic: [error] lock subscription error");
                                     0
                                 }
                             }
@@ -169,7 +169,7 @@ impl Subscriber {
                 }
                  // 如果线程启动失败，打印错误信息
                 Err(e) => {
-                    log!(error, "Error starting poll thread: {:?}", e);
+                    log!(error, "panic: Error starting poll thread: {:?}", e);
                 }
             }
         }

@@ -318,7 +318,7 @@ impl Messaging {
     }
     //错误处理 aeron客户端层出现异常时执行
     fn error_handler(err: AeronError) {
-        log!(error, "Error: {:?}", err);
+        log!(warn, "Error: {:?}", err);
     }
 }
 // 自定义实现资源释放
