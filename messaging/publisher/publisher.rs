@@ -79,7 +79,7 @@ impl Publisher {
                 return publication_locked.is_connected();
             }
             Err(e) => {
-                log!(error, "[error]locking publication: {:?}", e);
+                log!(error, "panic: [error]locking publication: {:?}", e);
                 return false;
             }
         }
@@ -107,7 +107,7 @@ impl Publisher {
                     }
                 },
                 Err(e) => {
-                    log!(error, "[error]locking publication: {:?}", e);
+                    log!(error, "panic: [error]locking publication: {:?}", e);
                 }
             }
             count += 1;
@@ -116,7 +116,7 @@ impl Publisher {
             if offer_part_fail {
                 if let Some(error_msg) = error_info {
                     if count > 100 {
-                        log!(error, "{}", error_msg);
+                        log!(error, "panic: {}", error_msg);
                         bail!("Publish failed after 100 attempts: {}", error_msg);
                     }
                 }
@@ -132,7 +132,7 @@ impl Publisher {
                 }
             }
             Err(e) => {
-                log!(error, "[error]locking publication: {:?}", e);
+                log!(error, "panic: [error]locking publication: {:?}", e);
             }
         }
         Ok(())
@@ -150,7 +150,7 @@ impl Publisher {
                 publication_locked.release();
             }
             Err(e) => {
-                log!(error, "[error]locking publication: {:?}", e);
+                log!(error, "panic: [error]locking publication: {:?}", e);
             }
         }
     }

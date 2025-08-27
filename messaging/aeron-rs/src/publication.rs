@@ -716,7 +716,7 @@ impl Publication {
             .expect("Mutex poisoned")
             .release_publication(self.registration_id)
         {
-            log!(error, "Release publication error: {:?}", err);
+            log!(warn, "Release publication error: {:?}", err);
         }
     }
 
