@@ -1591,3 +1591,8 @@ checksum = "6f42320e61fe2cfd34354ecb597f86f413484a798ba44a8ca1165c58d42da6c1"
 dependencies = [
  "bitflags 2.9.1",
 ]
+
+[[patch.unused]]
+name = "algorithm-trade-common"
+version = "0.1.0"
+source = "git+ssh://git@code.non-convex.com/ftcd/algorithm-trade-common.git?tag=v0.0.55#55f29fd03693fe81d8cfc03736f74efc6799464b"
