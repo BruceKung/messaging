@@ -21,8 +21,15 @@ use chrono::{Local, TimeZone};
 
 use crate::utils::types::{Index, Moment};
 
-// Aeron 协议假定缓存行长度为 64 字节；固定为 64 以保持与驱动一致。
-pub const CACHE_LINE_LENGTH: Index = 64;
+// 非ARM64架构的服务器上，保持使用cache_line_size中定义的值
+#[cfg(not(target_arch = "aarch64"))]
+pub const CACHE_LINE_LENGTH: Index = {
+    use cache_line_size::CACHE_LINE_SIZE;
+    CACHE_LINE_SIZE as Index
+};
+// 目前使用ARM64架构的服务器上，cache line size为64字节，所以这里定义为64字节
+#[cfg(target_arch = "aarch64")]
+pub const CACHE_LINE_LENGTH: Index = 64 as Index;
 
 #[inline]
 /// Get system time since start of UNIX epoch in milliseconds (ms) (10^-3 sec)
