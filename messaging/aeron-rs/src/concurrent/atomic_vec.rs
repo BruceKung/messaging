@@ -86,8 +86,13 @@ impl<T> AtomicVec<T> {
                 self.begin_change.store(seq_no, Ordering::Release);
 
                 let buf = mem::take(&mut self.buf);
-                *self = Self::new();
 
+                // begin_change/end_change 是 AtomicVec 的读写一致性门闩：
+                // 写侧先更新 begin_change，完成 buf 修改后再更新 end_change；
+                // 读侧 load/load_mut 只有看到两者相等，才认为本次修改已经完成。
+                // take() 只是清空并取走 buf，不能重置整个 AtomicVec。
+                // 如果这里把 begin_change 重置成初始值而只更新 end_change，
+                // 两个序号会长期不一致，读侧会一直自旋等待，导致 Poll thread 空转占满 CPU。
                 self.end_change.store(seq_no, Ordering::Release);
 
                 return buf;

@@ -193,6 +193,13 @@ impl Subscription {
         fragment_handler: &mut impl FnMut(&AtomicBuffer, Index, Index, &Header),
         fragment_limit: i32,
     ) -> i32 {
+        // subscription 被 conductor 关闭后，说明底层 image/log buffer 正在或已经被清理。
+        // 此时 poll 不应继续访问 image_list，也不应继续向上报告有 work。
+        // 返回 0 可以让外层 idle strategy 进入空闲等待，避免关闭态下 Poll thread 持续空转。
+        if self.is_closed() {
+            return 0;
+        }
+
         let image_list = self.image_list.load_mut();
 
         let mut fragments_read = 0;
